@@ -1014,6 +1014,11 @@ bool AdminModule::handleSetModuleConfig(const meshtastic_ModuleConfig &c)
         moduleConfig.statusmessage = c.payload_variant.statusmessage;
         shouldReboot = false;
         break;
+    case meshtastic_ModuleConfig_nctnl_tag:
+        LOG_INFO("Set module config: NCTNL");
+        moduleConfig.has_nctnl = true;
+        moduleConfig.nctnl = c.payload_variant.nctnl;
+        break;
     }
     saveChanges(SEGMENT_MODULECONFIG, shouldReboot);
     return true;
@@ -1198,6 +1203,11 @@ void AdminModule::handleGetModuleConfig(const meshtastic_MeshPacket &req, const 
             LOG_INFO("Get module config: StatusMessage");
             res.get_module_config_response.which_payload_variant = meshtastic_ModuleConfig_statusmessage_tag;
             res.get_module_config_response.payload_variant.statusmessage = moduleConfig.statusmessage;
+            break;
+        case meshtastic_AdminMessage_ModuleConfigType_NCTNL_CONFIG:
+            LOG_INFO("Get module config: NCTNL");
+            res.get_module_config_response.which_payload_variant = meshtastic_ModuleConfig_nctnl_tag;
+            res.get_module_config_response.payload_variant.nctnl = moduleConfig.nctnl;
             break;
         }
 
