@@ -4,6 +4,7 @@
 #include "modules/SystemCommandsModule.h"
 #endif
 #include "modules/StatusLEDModule.h"
+#include "modules/NctnlModule.h"
 #if !MESHTASTIC_EXCLUDE_REPLYBOT
 #include "ReplyBotModule.h"
 #endif
@@ -117,6 +118,7 @@ void setupModules()
     }
 #endif
     statusLEDModule = new StatusLEDModule();
+    nctnlModule = new NctnlModule();
 #if !MESHTASTIC_EXCLUDE_REPLYBOT
     new ReplyBotModule();
 #endif
