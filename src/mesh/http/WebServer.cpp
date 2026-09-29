@@ -65,13 +65,14 @@ static const uint32_t MIN_HEAP_FOR_SSL = 40000;
 static SSLCert *cert;
 static HTTPSServer *secureServer;
 static HTTPServer *insecureServer;
+static bool nctnlWebServerActive;
 
 volatile bool isWebServerReady;
 volatile bool isCertReady;
 
 static void handleWebResponse()
 {
-    if (isWifiAvailable()) {
+    if (isWifiAvailable() || nctnlWebServerActive) {
 
         if (isWebServerReady) {
             // Check heap before HTTPS processing - SSL requires significant memory
@@ -203,6 +204,42 @@ WebServerThread::WebServerThread() : concurrency::OSThread("WebServer")
     lastActivityTime = millis();
 }
 
+bool initNctnlWebServer()
+{
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+    if (isWebServerReady)
+        return false;
+    insecureServer = new HTTPServer();
+    registerNctnlHandlers(insecureServer);
+    insecureServer->start();
+    if (!insecureServer->isRunning()) {
+        delete insecureServer;
+        insecureServer = nullptr;
+        return false;
+    }
+    nctnlWebServerActive = true;
+    isWebServerReady = true;
+    if (webServerThread)
+        webServerThread->enable();
+    return true;
+#else
+    return false;
+#endif
+}
+
+void stopNctnlWebServer()
+{
+    if (!nctnlWebServerActive)
+        return;
+    insecureServer->stop();
+    delete insecureServer;
+    insecureServer = nullptr;
+    nctnlWebServerActive = false;
+    isWebServerReady = false;
+    if (webServerThread)
+        webServerThread->disableForNctnl();
+}
+
 void WebServerThread::markActivity()
 {
     lastActivityTime = millis();
@@ -230,7 +267,7 @@ int32_t WebServerThread::getAdaptiveInterval()
 
 int32_t WebServerThread::runOnce()
 {
-    if (!config.network.wifi_enabled && !config.network.eth_enabled) {
+    if (!config.network.wifi_enabled && !config.network.eth_enabled && !nctnlWebServerActive) {
         disable();
     }
 

@@ -1,5 +1,8 @@
 #pragma once
 void registerHandlers(HTTPServer *insecureServer, HTTPSServer *secureServer);
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+void registerNctnlHandlers(HTTPServer *insecureServer);
+#endif
 
 // Declare some handler functions for the various URLs on the server
 void handleAPIv1FromRadio(HTTPRequest *req, HTTPResponse *res);
