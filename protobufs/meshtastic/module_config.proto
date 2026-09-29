@@ -858,6 +858,21 @@ message ModuleConfig {
   }
 
   /*
+   * NCTNL module configuration
+   */
+  message NctnlConfig {
+    /*
+     * Enable the NCTNL module.
+     */
+    bool enabled = 1;
+
+    /*
+     * Show NCTNL actions in the quick menu.
+     */
+    bool quick_menu_enabled = 2;
+  }
+
+  /*
    * TODO: REPLACE
    */
   oneof payload_variant {
@@ -940,6 +955,11 @@ message ModuleConfig {
      * TAK team/role configuration for TAK_TRACKER
      */
     TAKConfig tak = 16;
+
+    /*
+     * NCTNL module configuration
+     */
+    NctnlConfig nctnl = 17;
   }
 
   /*

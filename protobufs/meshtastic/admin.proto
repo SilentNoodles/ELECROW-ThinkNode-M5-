@@ -167,6 +167,11 @@ message AdminMessage {
      * TAK module config
      */
     TAK_CONFIG = 15;
+
+    /*
+     * NCTNL module config
+     */
+    NCTNL_CONFIG = 16;
   }
 
   enum BackupLocation {
