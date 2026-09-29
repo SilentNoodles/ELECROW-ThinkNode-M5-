@@ -26,8 +26,8 @@
 
 // Buttons
 
-#define PIN_BUTTON2 14
-#define PIN_BUTTON1 21
+#define PIN_BUTTON2 14 // Alternate / BackButton
+#define PIN_BUTTON1 21 // Primary / UserButton
 
 // Wire Interfaces
 
