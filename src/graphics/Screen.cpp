@@ -40,9 +40,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "draw/NotificationRenderer.h"
 #include "draw/UIRenderer.h"
 #include "modules/CannedMessageModule.h"
-#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
-#include "modules/NctnlModule.h"
-#endif
 
 #if !MESHTASTIC_EXCLUDE_GPS
 #include "GPS.h"
@@ -1968,12 +1965,6 @@ int Screen::handleInputEvent(const InputEvent *event)
                        this->ui->getUiState()->currentFrame == framesetInfo.positions.home) {
                 cannedMessageModule->LaunchWithDestination(NODENUM_BROADCAST);
             } else if (event->inputEvent == INPUT_BROKER_SELECT) {
-#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
-                if (nctnlModule && nctnlModule->isQuickMenuEnabled()) {
-                    menuHandler::nctnlQuickMessageMenu();
-                    return 0;
-                }
-#endif
                 if (this->ui->getUiState()->currentFrame == framesetInfo.positions.home) {
                     menuHandler::homeBaseMenu();
                 } else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.system) {

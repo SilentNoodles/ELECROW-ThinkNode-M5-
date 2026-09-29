@@ -57,6 +57,7 @@ class CannedMessageModule : public SinglePortModule, public Observable<const UIF
     void LaunchWithDestination(NodeNum, uint8_t newChannel = 0);
     void LaunchRepeatDestination();
     void LaunchFreetextWithDestination(NodeNum, uint8_t newChannel = 0);
+    void LaunchNctnlQuickMessageMenu();
 
     // === Emote Picker navigation ===
     int emotePickerIndex = 0; // Tracks currently selected emote in the picker
@@ -154,6 +155,7 @@ class CannedMessageModule : public SinglePortModule, public Observable<const UIF
     char *messages[CANNED_MESSAGE_MODULE_MESSAGE_MAX_COUNT];
     int messagesCount = 0;
     int currentMessageIndex = -1;
+    bool nctnlQuickMessageMenu = false;
 
     // === Routing & Acknowledgment ===
     NodeNum dest = NODENUM_BROADCAST;     // Destination node for outgoing messages (default: broadcast)

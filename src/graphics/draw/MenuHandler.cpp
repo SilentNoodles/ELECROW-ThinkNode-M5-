@@ -62,68 +62,6 @@ menuHandler::screenMenus menuHandler::menuQueue = MenuNone;
 uint32_t menuHandler::pickedNodeNum = 0;
 bool test_enabled = false;
 uint8_t test_count = 0;
-static NodeNum nctnlDestination = NODENUM_BROADCAST;
-
-void menuHandler::nctnlQuickMessageMenu()
-{
-    enum QuickMessageMenuOption {
-        SelectDestination,
-        GoingOffline,
-        GoingStandby,
-        CheckIn,
-        NeedAssistance,
-        AllClear,
-        FreeText,
-        Exit
-    };
-    static const char *options[] = {"Select Destination", "Going Offline", "Going Standby", "Check In",
-                                    "Need Assistance",   "All Clear",      "Free Text",     "Exit"};
-
-    const meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(nctnlDestination);
-    char title[64];
-    if (nctnlDestination == NODENUM_BROADCAST) {
-        snprintf(title, sizeof(title), "NCTNL Quick Message Menu\nTo: Everyone");
-    } else if (node && node->has_user && node->user.long_name[0]) {
-        snprintf(title, sizeof(title), "NCTNL Quick Message Menu\nTo: %.15s", node->user.long_name);
-    } else {
-        snprintf(title, sizeof(title), "NCTNL Quick Message Menu\nTo: %08X", (unsigned int)nctnlDestination);
-    }
-
-    BannerOverlayOptions bannerOptions;
-    bannerOptions.message = title;
-    bannerOptions.optionsArrayPtr = options;
-    bannerOptions.optionsCount = sizeof(options) / sizeof(options[0]);
-    bannerOptions.bannerCallback = [](int selected) -> void {
-        if (selected == SelectDestination) {
-            menuQueue = NctnlDestinationPicker;
-            screen->runNow();
-            return;
-        }
-        if (selected == FreeText) {
-            cannedMessageModule->LaunchFreetextWithDestination(nctnlDestination, channels.getPrimaryIndex());
-            return;
-        }
-        if (selected == Exit) {
-            return;
-        }
-
-        const char *action = options[selected];
-        LOG_INFO("NCTNL Quick Message Menu: %s selected", action);
-        char confirmation[48];
-        snprintf(confirmation, sizeof(confirmation), "%s\nSelected locally", action);
-        screen->showSimpleBanner(confirmation, 2500);
-    };
-    screen->showOverlayBanner(bannerOptions);
-}
-
-void menuHandler::nctnlDestinationPicker()
-{
-    screen->showNodePicker("NCTNL Destination", 30000, [](uint32_t nodenum) -> void {
-        nctnlDestination = nodenum;
-        menuQueue = NctnlQuickMessageMenu;
-        screen->runNow();
-    });
-}
 
 void menuHandler::loraMenu()
 {
@@ -2864,12 +2802,6 @@ void menuHandler::handleMenuSwitch(OLEDDisplay *display)
         break;
     case MessageBubblesMenu:
         messageBubblesMenu();
-        break;
-    case NctnlQuickMessageMenu:
-        nctnlQuickMessageMenu();
-        break;
-    case NctnlDestinationPicker:
-        nctnlDestinationPicker();
         break;
     }
     menuQueue = MenuNone;

@@ -26,6 +26,9 @@
 #include "mesh/generated/meshtastic/cannedmessages.pb.h"
 #include "modules/AdminModule.h"
 #include "modules/ExternalNotificationModule.h" // for buzzer control
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+#include "modules/NctnlModule.h"
+#endif
 extern MessageStore messageStore;
 #if HAS_TRACKBALL
 #include "input/TrackballInterruptImpl1.h"
@@ -120,6 +123,25 @@ void CannedMessageModule::LaunchRepeatDestination()
     } else {
         LaunchWithDestination(lastDest, lastChannel);
     }
+}
+
+void CannedMessageModule::LaunchNctnlQuickMessageMenu()
+{
+    LaunchWithDestination(NODENUM_BROADCAST);
+    nctnlQuickMessageMenu = true;
+
+    static char selectDestination[] = "[Select Destination]";
+    static char goingOffline[] = "Going Offline";
+    static char goingStandby[] = "Going Standby";
+    static char checkIn[] = "Check In";
+    static char needAssistance[] = "Need Assistance";
+    static char allClear[] = "All Clear";
+    static char freeText[] = "[-- Free Text --]";
+    static char exit[] = "[Exit]";
+    static char *nctnlMessages[] = {selectDestination, goingOffline, goingStandby, checkIn,
+                                    needAssistance,   allClear,      freeText,     exit};
+    messagesCount = sizeof(nctnlMessages) / sizeof(nctnlMessages[0]);
+    memcpy(messages, nctnlMessages, sizeof(nctnlMessages));
 }
 
 void CannedMessageModule::LaunchFreetextWithDestination(NodeNum newDest, uint8_t newChannel)
@@ -456,6 +478,12 @@ int CannedMessageModule::handleInputEvent(const InputEvent *event)
 
     case CANNED_MESSAGE_RUN_STATE_INACTIVE:
         if (event->inputEvent == INPUT_BROKER_ALT_LONG) {
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+            if (nctnlModule && nctnlModule->isQuickMenuEnabled()) {
+                LaunchNctnlQuickMessageMenu();
+                return 1;
+            }
+#endif
             LaunchWithDestination(NODENUM_BROADCAST);
             return 1;
         }
@@ -488,6 +516,10 @@ int CannedMessageModule::handleInputEvent(const InputEvent *event)
 void CannedMessageModule::updateState(cannedMessageModuleRunState newState, bool shouldRequestFocus)
 {
     runState = newState;
+    if (runState == CANNED_MESSAGE_RUN_STATE_INACTIVE && nctnlQuickMessageMenu) {
+        nctnlQuickMessageMenu = false;
+        splitConfiguredMessages();
+    }
     if (runState == CANNED_MESSAGE_RUN_STATE_FREETEXT) {
         inputBroker->menuMode =
             false; // Allow any key input to be sent to the message composer instead of being interpreted as menu navigation
@@ -725,6 +757,17 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
             e.action = UIFrameEvent::Action::REGENERATE_FRAMESET;
             notifyObservers(&e);
             screen->forceDisplay();
+            return true;
+        }
+
+        if (nctnlQuickMessageMenu &&
+            (strcmp(current, "Going Offline") == 0 || strcmp(current, "Going Standby") == 0 ||
+             strcmp(current, "Check In") == 0 || strcmp(current, "Need Assistance") == 0 ||
+             strcmp(current, "All Clear") == 0)) {
+            LOG_INFO("NCTNL Quick Message Menu: %s selected", current);
+            char confirmation[48];
+            snprintf(confirmation, sizeof(confirmation), "%s\nSelected locally", current);
+            screen->showSimpleBanner(confirmation, 2500);
             return true;
         }
 
