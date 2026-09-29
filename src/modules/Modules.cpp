@@ -121,9 +121,7 @@ void setupModules()
 #endif
     statusLEDModule = new StatusLEDModule();
 #if !MESHTASTIC_EXCLUDE_NCTNL
-    if (moduleConfig.has_nctnl && moduleConfig.nctnl.enabled) {
-        nctnlModule = new NctnlModule();
-    }
+    nctnlModule = new NctnlModule();
 #endif
 #if !MESHTASTIC_EXCLUDE_REPLYBOT
     new ReplyBotModule();
