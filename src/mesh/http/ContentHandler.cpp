@@ -12,6 +12,9 @@
 #include "SPILock.h"
 #include "power.h"
 #include "serialization/JSON.h"
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+#include "modules/NctnlModule.h"
+#endif
 #include <FSCommon.h>
 #include <HTTPBodyParser.hpp>
 #include <HTTPMultipartBodyParser.hpp>
@@ -61,6 +64,50 @@ char const *contentTypes[][2] = {{".txt", "text/plain"},     {".html", "text/htm
 
 // Our API to handle messages to and from the radio.
 HttpAPI webAPI;
+
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+static void handleNctnlConfig(HTTPRequest *, HTTPResponse *res)
+{
+    res->setHeader("Content-Type", "text/html; charset=utf-8");
+    res->println("<!doctype html><meta name=viewport content='width=device-width'><title>NCTNL Config</title>");
+    res->println("<style>body{font:18px sans-serif;max-width:32em;margin:2em auto;padding:0 1em}label{display:block;margin:1.2em 0}button{font-size:1em;padding:.7em}</style>");
+    res->println("<h1>NCTNL</h1><label><input id=e type=checkbox");
+    if (moduleConfig.nctnl.enabled)
+        res->print(" checked");
+    res->println("> NCTNL Enabled</label><label><input id=q type=checkbox");
+    if (moduleConfig.nctnl.quick_menu_enabled)
+        res->print(" checked");
+    res->println("> Quick Message Menu Enabled</label><button onclick=save()>Save &amp; Restart</button>");
+    res->println("<script>function save(){fetch('/save?enabled='+(e.checked?1:0)+'&quick_menu_enabled='+(q.checked?1:0),{method:'POST'}).then(r=>r.text()).then(t=>document.body.innerHTML=t)}</script>");
+}
+
+static void handleNctnlSave(HTTPRequest *req, HTTPResponse *res)
+{
+    std::string enabled;
+    std::string quickMenuEnabled;
+    ResourceParameters *params = req->getParams();
+    const bool valid = params->getQueryParameter("enabled", enabled) &&
+                       params->getQueryParameter("quick_menu_enabled", quickMenuEnabled) &&
+                       (enabled == "0" || enabled == "1") && (quickMenuEnabled == "0" || quickMenuEnabled == "1");
+    res->setHeader("Content-Type", "text/html; charset=utf-8");
+    if (!valid) {
+        res->setStatusCode(400);
+        res->println("<h1>Invalid settings</h1>");
+        return;
+    }
+    moduleConfig.nctnl.enabled = enabled == "1";
+    moduleConfig.nctnl.quick_menu_enabled = quickMenuEnabled == "1";
+    service->reloadConfig(SEGMENT_MODULECONFIG);
+    nctnlModule->scheduleWebConfigRestart();
+    res->println("<meta name=viewport content='width=device-width'><h1>Settings saved</h1><p>The M5 will restart shortly.</p>");
+}
+
+void registerNctnlHandlers(HTTPServer *server)
+{
+    server->registerNode(new ResourceNode("/", "GET", &handleNctnlConfig));
+    server->registerNode(new ResourceNode("/save", "POST", &handleNctnlSave));
+}
+#endif
 
 void registerHandlers(HTTPServer *insecureServer, HTTPSServer *secureServer)
 {
