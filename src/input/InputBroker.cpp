@@ -57,6 +57,54 @@ ButtonThread *CancelButtonThread = nullptr;
 
 InputBroker *inputBroker = nullptr;
 
+#if defined(ELECROW_ThinkNode_M5)
+static void logNctnlPrimaryPressed()
+{
+    LOG_INFO("NCTNL BUTTON DIAG: primary GPIO%d pressed", BUTTON_PIN);
+}
+
+static void logNctnlPrimaryReleased()
+{
+    LOG_INFO("NCTNL BUTTON DIAG: primary GPIO%d released", BUTTON_PIN);
+}
+
+static void logNctnlAlternatePressed()
+{
+    LOG_INFO("NCTNL BUTTON DIAG: alternate GPIO%d pressed", ALT_BUTTON_PIN);
+}
+
+static void logNctnlAlternateReleased()
+{
+    LOG_INFO("NCTNL BUTTON DIAG: alternate GPIO%d released", ALT_BUTTON_PIN);
+}
+
+static void logNctnlButtonEvent(const InputEvent *event)
+{
+    if (!event)
+        return;
+
+    const char *eventName = nullptr;
+    switch (event->inputEvent) {
+    case INPUT_BROKER_USER_PRESS:
+        eventName = "primary short press (INPUT_BROKER_USER_PRESS)";
+        break;
+    case INPUT_BROKER_SELECT:
+        eventName = "primary hold (INPUT_BROKER_SELECT)";
+        break;
+    case INPUT_BROKER_ALT_PRESS:
+        eventName = "alternate short press (INPUT_BROKER_ALT_PRESS)";
+        break;
+    case INPUT_BROKER_ALT_LONG:
+        eventName = "alternate hold (INPUT_BROKER_ALT_LONG)";
+        break;
+    default:
+        return;
+    }
+
+    LOG_INFO("NCTNL BUTTON DIAG: %s from %s", eventName, event->source ? event->source : "unknown");
+}
+#endif
+
 InputBroker::InputBroker()
 {
 #if defined(HAS_FREE_RTOS) && !defined(ARCH_RP2040)
@@ -101,6 +149,9 @@ void InputBroker::processInputEventQueue()
 
 int InputBroker::handleInputEvent(const InputEvent *event)
 {
+#if defined(ELECROW_ThinkNode_M5)
+    logNctnlButtonEvent(event);
+#endif
 #if HAS_SCREEN
     bool screenWasOff = false;
     if (screen) {
@@ -281,6 +332,10 @@ void InputBroker::Init()
     backConfig.activeLow = ALT_BUTTON_ACTIVE_LOW;
     backConfig.activePullup = ALT_BUTTON_ACTIVE_PULLUP;
     backConfig.pullupSense = pullup_sense;
+#if defined(ELECROW_ThinkNode_M5)
+    backConfig.onPress = logNctnlAlternatePressed;
+    backConfig.onRelease = logNctnlAlternateReleased;
+#endif
     backConfig.intRoutine = []() {
         BackButtonThread->userButton.tick();
         BackButtonThread->setIntervalFromNow(0);
@@ -317,6 +372,10 @@ void InputBroker::Init()
         userConfig.activeLow = BUTTON_ACTIVE_LOW;
         userConfig.activePullup = BUTTON_ACTIVE_PULLUP;
         userConfig.pullupSense = pullup_sense;
+#if defined(ELECROW_ThinkNode_M5)
+        userConfig.onPress = logNctnlPrimaryPressed;
+        userConfig.onRelease = logNctnlPrimaryReleased;
+#endif
         userConfig.intRoutine = []() {
             UserButtonThread->userButton.tick();
             UserButtonThread->setIntervalFromNow(0);
