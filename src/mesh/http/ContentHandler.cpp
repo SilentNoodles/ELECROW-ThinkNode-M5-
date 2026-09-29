@@ -1,4 +1,5 @@
 #if !MESHTASTIC_EXCLUDE_WEBSERVER
+#include "MeshService.h"
 #include "NodeDB.h"
 #include "PowerFSM.h"
 #include "RadioLibInterface.h"
