@@ -8,6 +8,8 @@
 #if !MESHTASTIC_EXCLUDE_WEBSERVER
 
 void initWebServer();
+bool initNctnlWebServer();
+void stopNctnlWebServer();
 void createSSLCert();
 
 class WebServerThread : private concurrency::OSThread
@@ -19,6 +21,8 @@ class WebServerThread : private concurrency::OSThread
     WebServerThread();
     uint32_t requestRestart = 0;
     void markActivity();
+    void enable() { enabled = true; }
+    void disableForNctnl() { disable(); }
 
   protected:
     virtual int32_t runOnce() override;
@@ -30,6 +34,8 @@ extern WebServerThread *webServerThread;
 #else
 // Stub implementations when web server is excluded
 inline void initWebServer() {}
+inline bool initNctnlWebServer() { return false; }
+inline void stopNctnlWebServer() {}
 inline void createSSLCert() {}
 
 class WebServerThread
