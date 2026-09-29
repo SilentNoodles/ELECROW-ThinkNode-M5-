@@ -488,6 +488,11 @@ size_t PhoneAPI::getFromRadio(uint8_t *buf)
             fromRadioScratch.moduleConfig.which_payload_variant = meshtastic_ModuleConfig_paxcounter_tag;
             fromRadioScratch.moduleConfig.payload_variant.paxcounter = moduleConfig.paxcounter;
             break;
+        case meshtastic_ModuleConfig_nctnl_tag:
+            LOG_DEBUG("Send module config: nctnl");
+            fromRadioScratch.moduleConfig.which_payload_variant = meshtastic_ModuleConfig_nctnl_tag;
+            fromRadioScratch.moduleConfig.payload_variant.nctnl = moduleConfig.nctnl;
+            break;
         default:
             LOG_ERROR("Unknown module config type %d", config_state);
         }
