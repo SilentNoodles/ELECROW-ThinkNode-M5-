@@ -1,5 +1,6 @@
 #include "NctnlModule.h"
 #include "MeshService.h"
+#include "NctnlDevelopmentConfig.h"
 #include "NodeDB.h"
 #include "configuration.h"
 #if HAS_SCREEN
@@ -43,13 +44,31 @@ NctnlModule::NctnlModule()
 
 bool NctnlModule::isEnabled() const
 {
-    return moduleConfig.nctnl.enabled;
+    return NctnlDevelopmentConfig::NCTNL_ENABLED;
 }
 
 bool NctnlModule::isQuickMenuEnabled() const
 {
-    return isEnabled() && moduleConfig.nctnl.quick_menu_enabled;
+    return isEnabled() && NctnlDevelopmentConfig::QUICK_MESSAGE_MENU_ENABLED;
 }
+
+#if defined(ELECROW_ThinkNode_M5) && HAS_SCREEN
+void NctnlModule::showSettingsStatusPage() const
+{
+    static char status[240];
+    snprintf(status, sizeof(status),
+             "Development settings\n\nNCTNL Enabled: %s\nQuick Message Menu: %s\n\nValues shown here are currently hard-coded\nand "
+             "cannot be changed from this page.",
+             isEnabled() ? "Enabled" : "Disabled", isQuickMenuEnabled() ? "Enabled" : "Disabled");
+
+    static const char *options[] = {"Back"};
+    graphics::BannerOverlayOptions banner;
+    banner.message = status;
+    banner.optionsArrayPtr = options;
+    banner.optionsCount = 1;
+    screen->showOverlayBanner(banner);
+}
+#endif
 
 bool NctnlModule::wantPacket(const meshtastic_MeshPacket *p)
 {
