@@ -766,20 +766,24 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
             (strcmp(current, "Going Offline") == 0 || strcmp(current, "Going Standby") == 0 ||
              strcmp(current, "Check In") == 0 || strcmp(current, "Need Assistance") == 0 ||
              strcmp(current, "All Clear") == 0)) {
-            meshtastic_NctnlEvent_Type type = meshtastic_NctnlEvent_Type_UNKNOWN;
+            const char *message = nullptr;
             if (strcmp(current, "Going Offline") == 0)
-                type = meshtastic_NctnlEvent_Type_GOING_OFFLINE;
+                message = "NCTNL STATUS: Going Offline\nThis node is going offline and will no longer be available for "
+                          "communications until it returns online.";
             else if (strcmp(current, "Going Standby") == 0)
-                type = meshtastic_NctnlEvent_Type_STANDBY;
+                message = "NCTNL STATUS: Going Standby\nThis node is entering standby. Communications remain available, but "
+                          "responses may be delayed.";
             else if (strcmp(current, "Check In") == 0)
-                type = meshtastic_NctnlEvent_Type_CHECK_IN;
+                message = "NCTNL CHECK-IN: Status Confirmed\nThis node has checked in successfully. Everything is OK and no "
+                          "assistance is currently required.";
             else if (strcmp(current, "Need Assistance") == 0)
-                type = meshtastic_NctnlEvent_Type_ASSISTANCE;
+                message = "NCTNL ASSISTANCE: Assistance Requested\nNon-emergency assistance has been requested. Please respond when "
+                          "available to establish contact and determine what assistance is required.";
             else if (strcmp(current, "All Clear") == 0)
-                type = meshtastic_NctnlEvent_Type_ALL_CLEAR;
+                message = "NCTNL STATUS: All Clear\nThe previous situation has been resolved. No further assistance is currently "
+                          "required.";
 
-            screen->showSimpleBanner(nctnlModule->sendEvent(type, dest, channel) ? "NCTNL event sent" : "NCTNL send failed",
-                                     2500);
+            sendText(dest, channel, message, true);
             return true;
         }
 
