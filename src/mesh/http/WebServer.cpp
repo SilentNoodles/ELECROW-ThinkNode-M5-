@@ -89,7 +89,8 @@ static void handleWebResponse()
                     }
                 }
             }
-            insecureServer->loop();
+            if (insecureServer)
+                insecureServer->loop();
         }
     }
 }
@@ -213,6 +214,7 @@ bool initNctnlWebServer()
     registerNctnlHandlers(insecureServer);
     insecureServer->start();
     if (!insecureServer->isRunning()) {
+        LOG_ERROR("NCTNL HTTP server failed to listen on port 80");
         delete insecureServer;
         insecureServer = nullptr;
         return false;
@@ -221,6 +223,7 @@ bool initNctnlWebServer()
     isWebServerReady = true;
     if (webServerThread)
         webServerThread->enable();
+    LOG_INFO("NCTNL HTTP server listening on 0.0.0.0:80 (SoftAP %s)", WiFi.softAPIP().toString().c_str());
     return true;
 #else
     return false;

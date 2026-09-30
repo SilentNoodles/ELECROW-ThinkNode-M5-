@@ -21,7 +21,11 @@ class WebServerThread : private concurrency::OSThread
     WebServerThread();
     uint32_t requestRestart = 0;
     void markActivity();
-    void enable() { enabled = true; }
+    void enable()
+    {
+        setIntervalFromNow(0);
+        enabled = true;
+    }
     void disableForNctnl() { disable(); }
 
   protected:

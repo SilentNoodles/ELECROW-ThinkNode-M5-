@@ -28,8 +28,9 @@
 #include "mesh/http/WebServer.h"
 #endif
 #include <ESPmDNS.h>
+#include <esp_netif.h>
 #include <esp_wifi.h>
-static void WiFiEvent(WiFiEvent_t event);
+static void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info);
 static bool wifiEventHandlerRegistered;
 static bool temporaryApActive;
 static bool temporaryApConfigured;
@@ -111,9 +112,26 @@ bool startTemporaryWifiAp(const char *ssid)
         return false;
     }
 
+    const IPAddress apAddress(192, 168, 4, 1);
+    const IPAddress subnet(255, 255, 255, 0);
+    if (!WiFi.softAPConfig(apAddress, apAddress, subnet)) {
+        LOG_ERROR("Temporary WiFi AP failed: IPv4/DHCP configuration rejected");
+        WiFi.softAPdisconnect(false);
+        temporaryApActive = false;
+        temporaryApModeChanged = WiFi.getMode() != temporaryApPreviousMode;
+        temporaryApState = TemporaryWifiApState::FAILED;
+        return false;
+    }
+
     temporaryApConfigured = true;
     temporaryApModeChanged = WiFi.getMode() != temporaryApPreviousMode;
-    LOG_INFO("Temporary WiFi AP configured as open network");
+    esp_netif_dhcp_status_t dhcpStatus = ESP_NETIF_DHCP_INIT;
+    esp_netif_t *apNetif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+    const esp_err_t dhcpResult = apNetif ? esp_netif_dhcps_get_status(apNetif, &dhcpStatus) : ESP_ERR_NOT_FOUND;
+    LOG_INFO("Temporary WiFi AP configured as open network: IP %s, DHCP %s (status=%d, result=%d)",
+             WiFi.softAPIP().toString().c_str(),
+             dhcpResult == ESP_OK && dhcpStatus == ESP_NETIF_DHCP_STARTED ? "started" : "not started",
+             static_cast<int>(dhcpStatus), static_cast<int>(dhcpResult));
     return true;
 }
 
@@ -507,7 +525,7 @@ IPv6Address GlobalIPv6()
 }
 #endif
 // Called by the Espressif SDK to
-static void WiFiEvent(WiFiEvent_t event)
+static void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
 {
     LOG_DEBUG("Network-Event %d: ", event);
 
@@ -632,7 +650,7 @@ static void WiFiEvent(WiFiEvent_t event)
         LOG_INFO("Client disconnected");
         break;
     case ARDUINO_EVENT_WIFI_AP_STAIPASSIGNED:
-        LOG_INFO("Assigned IP address to client");
+        LOG_INFO("Assigned IP address %s to client", IPAddress(info.wifi_ap_staipassigned.ip.addr).toString().c_str());
         break;
     case ARDUINO_EVENT_WIFI_AP_PROBEREQRECVED:
         LOG_INFO("Received probe request");

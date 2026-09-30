@@ -69,6 +69,7 @@ HttpAPI webAPI;
 #if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
 static void handleNctnlConfig(HTTPRequest *, HTTPResponse *res)
 {
+    LOG_INFO("NCTNL HTTP GET /");
     res->setHeader("Content-Type", "text/html; charset=utf-8");
     res->println("<!doctype html><meta name=viewport content='width=device-width'><title>NCTNL Config</title>");
     res->println("<style>body{font:18px sans-serif;max-width:32em;margin:2em auto;padding:0 1em}label{display:block;margin:1.2em 0}button{font-size:1em;padding:.7em}</style>");
