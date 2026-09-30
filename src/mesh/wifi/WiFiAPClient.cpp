@@ -3,6 +3,7 @@
 #include "NodeDB.h"
 #include "RTC.h"
 #include "concurrency/Periodic.h"
+#include "mesh/Throttle.h"
 #include "mesh/wifi/WiFiAPClient.h"
 
 #include "main.h"
@@ -34,6 +35,7 @@ static bool temporaryApActive;
 static bool temporaryApConfigured;
 static bool temporaryApStartObserved;
 static bool temporaryApModeChanged;
+static uint32_t temporaryApLastTransitionAt;
 static wifi_mode_t temporaryApPreviousMode = WIFI_MODE_NULL;
 static TemporaryWifiApState temporaryApState = TemporaryWifiApState::INACTIVE;
 #elif defined(ARCH_RP2040)
@@ -41,7 +43,6 @@ static TemporaryWifiApState temporaryApState = TemporaryWifiApState::INACTIVE;
 #endif
 
 #ifndef DISABLE_NTP
-#include "Throttle.h"
 #include <NTPClient.h>
 #endif
 
@@ -98,6 +99,7 @@ bool startTemporaryWifiAp(const char *ssid, const char *password)
     temporaryApActive = true;
     temporaryApConfigured = false;
     temporaryApStartObserved = false;
+    temporaryApLastTransitionAt = millis();
     registerWiFiEventHandler();
     WiFi.persistent(false);
 
@@ -111,10 +113,11 @@ bool startTemporaryWifiAp(const char *ssid, const char *password)
 
     temporaryApConfigured = true;
     temporaryApModeChanged = WiFi.getMode() != temporaryApPreviousMode;
-    if (temporaryApStartObserved) {
-        temporaryApState = TemporaryWifiApState::READY;
-        LOG_INFO("Temporary WiFi AP ready at %s", WiFi.softAPIP().toString().c_str());
-    }
+    wifi_config_t apConfig;
+    if (esp_wifi_get_config(WIFI_IF_AP, &apConfig) == ESP_OK)
+        LOG_INFO("Temporary WiFi AP configured (auth mode %u, password length %u)",
+                 static_cast<unsigned>(apConfig.ap.authmode),
+                 static_cast<unsigned>(strlen(reinterpret_cast<const char *>(apConfig.ap.password))));
     return true;
 }
 
@@ -138,6 +141,14 @@ void stopTemporaryWifiAp()
 
 TemporaryWifiApState getTemporaryWifiApState()
 {
+    if (temporaryApState == TemporaryWifiApState::STARTING && temporaryApConfigured && temporaryApStartObserved &&
+        !Throttle::isWithinTimespanMs(temporaryApLastTransitionAt, 250)) {
+        const wifi_mode_t mode = WiFi.getMode();
+        if ((mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA) && static_cast<uint32_t>(WiFi.softAPIP()) != 0) {
+            temporaryApState = TemporaryWifiApState::READY;
+            LOG_INFO("Temporary WiFi AP stable and ready at %s", WiFi.softAPIP().toString().c_str());
+        }
+    }
     return temporaryApState;
 }
 #endif
@@ -293,6 +304,10 @@ static void onNetworkConnected()
 
 static int32_t reconnectWiFi()
 {
+#ifdef ARCH_ESP32
+    if (temporaryApActive)
+        return 1000;
+#endif
     const char *wifiName = config.network.wifi_ssid;
     const char *wifiPsw = config.network.wifi_psk;
 
@@ -597,10 +612,7 @@ static void WiFiEvent(WiFiEvent_t event)
         LOG_INFO("WiFi access point started");
         if (temporaryApActive) {
             temporaryApStartObserved = true;
-            if (temporaryApConfigured) {
-                temporaryApState = TemporaryWifiApState::READY;
-                LOG_INFO("Temporary WiFi AP ready at %s", WiFi.softAPIP().toString().c_str());
-            }
+            temporaryApLastTransitionAt = millis();
         }
 #ifdef WIFI_LED
         digitalWrite(WIFI_LED, LOW ^ WIFI_STATE_ON);
@@ -610,6 +622,7 @@ static void WiFiEvent(WiFiEvent_t event)
         LOG_INFO("WiFi access point stopped");
         if (temporaryApActive) {
             temporaryApStartObserved = false;
+            temporaryApLastTransitionAt = millis();
             temporaryApState = TemporaryWifiApState::STARTING;
         }
 #ifdef WIFI_LED

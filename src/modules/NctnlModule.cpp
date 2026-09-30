@@ -78,6 +78,7 @@ bool NctnlModule::startWebConfig()
     }
     webConfigStarting = true;
     webConfigRequestedAt = millis();
+    OSThread::setIntervalFromNow(0);
     OSThread::enabled = true;
     return true;
 }
