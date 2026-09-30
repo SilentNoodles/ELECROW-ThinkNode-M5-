@@ -49,7 +49,7 @@ bool NctnlModule::startWebConfig()
     char details[160];
     snprintf(details, sizeof(details), "NCTNL WEB CONFIG\nWi-Fi: %s\nPassword: %s\nOpen: 192.168.4.1", ssid, password);
     static const char *options[] = {"Stop"};
-    BannerOverlayOptions banner;
+    graphics::BannerOverlayOptions banner;
     banner.message = details;
     banner.optionsArrayPtr = options;
     banner.optionsCount = 1;
