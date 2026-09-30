@@ -26,7 +26,6 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     uint32_t webConfigStartedAt = 0;
     uint32_t restartAt = 0;
     char webConfigSsid[20] = {};
-    char webConfigPassword[16] = {};
 #endif
 };
 

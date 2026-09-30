@@ -88,7 +88,7 @@ static void registerWiFiEventHandler()
     }
 }
 
-bool startTemporaryWifiAp(const char *ssid, const char *password)
+bool startTemporaryWifiAp(const char *ssid)
 {
     if (temporaryApState == TemporaryWifiApState::STARTING || temporaryApState == TemporaryWifiApState::READY)
         return true;
@@ -103,7 +103,7 @@ bool startTemporaryWifiAp(const char *ssid, const char *password)
     registerWiFiEventHandler();
     WiFi.persistent(false);
 
-    if (!WiFi.softAP(ssid, password)) {
+    if (!WiFi.softAP(ssid)) {
         LOG_ERROR("Temporary WiFi AP failed: softAP startup rejected");
         temporaryApActive = false;
         temporaryApModeChanged = WiFi.getMode() != temporaryApPreviousMode;
@@ -113,11 +113,7 @@ bool startTemporaryWifiAp(const char *ssid, const char *password)
 
     temporaryApConfigured = true;
     temporaryApModeChanged = WiFi.getMode() != temporaryApPreviousMode;
-    wifi_config_t apConfig;
-    if (esp_wifi_get_config(WIFI_IF_AP, &apConfig) == ESP_OK)
-        LOG_INFO("Temporary WiFi AP configured (auth mode %u, password length %u)",
-                 static_cast<unsigned>(apConfig.ap.authmode),
-                 static_cast<unsigned>(strlen(reinterpret_cast<const char *>(apConfig.ap.password))));
+    LOG_INFO("Temporary WiFi AP configured as open network");
     return true;
 }
 
