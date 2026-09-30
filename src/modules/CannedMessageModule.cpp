@@ -6,6 +6,7 @@
 #include "CannedMessageModule.h"
 #include "Channels.h"
 #include "FSCommon.h"
+#include "GPSStatus.h"
 #include "MeshService.h"
 #include "MessageStore.h"
 #include "NodeDB.h"
@@ -136,10 +137,11 @@ void CannedMessageModule::LaunchNctnlQuickMessageMenu()
     static char checkIn[] = "Check In";
     static char needAssistance[] = "Need Assistance";
     static char allClear[] = "All Clear";
-    static char freeText[] = "[-- Free Text --]";
+    static char sendCoordinates[] = "[Send Coordinates]";
+    static char freeText[] = "[- Free Text -]";
     static char exit[] = "[Exit]";
-    static char *nctnlMessages[] = {selectDestination, goingOffline, goingStandby, checkIn,
-                                    needAssistance,   allClear,      freeText,     exit};
+    static char *nctnlMessages[] = {selectDestination, goingOffline, goingStandby, checkIn, needAssistance,
+                                    allClear,          sendCoordinates, freeText, exit};
     messagesCount = sizeof(nctnlMessages) / sizeof(nctnlMessages[0]);
     memcpy(messages, nctnlMessages, sizeof(nctnlMessages));
 }
@@ -764,16 +766,41 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
             (strcmp(current, "Going Offline") == 0 || strcmp(current, "Going Standby") == 0 ||
              strcmp(current, "Check In") == 0 || strcmp(current, "Need Assistance") == 0 ||
              strcmp(current, "All Clear") == 0)) {
-            LOG_INFO("NCTNL Quick Message Menu: %s selected", current);
-            char confirmation[48];
-            snprintf(confirmation, sizeof(confirmation), "%s\nSelected locally", current);
-            screen->showSimpleBanner(confirmation, 2500);
+            meshtastic_NctnlEvent_Type type = meshtastic_NctnlEvent_Type_UNKNOWN;
+            if (strcmp(current, "Going Offline") == 0)
+                type = meshtastic_NctnlEvent_Type_GOING_OFFLINE;
+            else if (strcmp(current, "Going Standby") == 0)
+                type = meshtastic_NctnlEvent_Type_STANDBY;
+            else if (strcmp(current, "Check In") == 0)
+                type = meshtastic_NctnlEvent_Type_CHECK_IN;
+            else if (strcmp(current, "Need Assistance") == 0)
+                type = meshtastic_NctnlEvent_Type_ASSISTANCE;
+            else if (strcmp(current, "All Clear") == 0)
+                type = meshtastic_NctnlEvent_Type_ALL_CLEAR;
+
+            screen->showSimpleBanner(nctnlModule->sendEvent(type, dest, channel) ? "NCTNL event sent" : "NCTNL send failed",
+                                     2500);
+            return true;
+        }
+
+        if (nctnlQuickMessageMenu && strcmp(current, "[Send Coordinates]") == 0) {
+#if !MESHTASTIC_EXCLUDE_GPS
+            if (gpsStatus && gpsStatus->getHasLock() && gpsStatus->getLastFixMillis() != 0) {
+                char coordinates[64];
+                snprintf(coordinates, sizeof(coordinates), "Coordinates: %.6f, %.6f", gpsStatus->getLatitude() * 1e-7,
+                         gpsStatus->getLongitude() * 1e-7);
+                sendText(dest, channel, coordinates, true);
+            } else
+#endif
+            {
+                screen->showSimpleBanner("No GPS fix", 2500);
+            }
             return true;
         }
 
         // [Free Text] triggers the free text input (virtual keyboard)
 #if defined(USE_VIRTUAL_KEYBOARD)
-        if (strcmp(current, "[-- Free Text --]") == 0) {
+        if (strcmp(current, "[-- Free Text --]") == 0 || strcmp(current, "[- Free Text -]") == 0) {
             updateState(CANNED_MESSAGE_RUN_STATE_FREETEXT, true);
             UIFrameEvent e;
             e.action = UIFrameEvent::Action::REGENERATE_FRAMESET;
@@ -781,7 +808,7 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
             return true;
         }
 #else
-        if (strcmp(current, "[-- Free Text --]") == 0) {
+        if (strcmp(current, "[-- Free Text --]") == 0 || strcmp(current, "[- Free Text -]") == 0) {
             if (osk_found && screen) {
                 char headerBuffer[64];
                 if (this->dest == NODENUM_BROADCAST) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SinglePortModule.h"
+#include "mesh/generated/meshtastic/nctnl.pb.h"
 
 class NctnlModule : public SinglePortModule
 {
@@ -8,6 +9,7 @@ class NctnlModule : public SinglePortModule
     NctnlModule();
     bool isEnabled() const;
     bool isQuickMenuEnabled() const;
+    bool sendEvent(meshtastic_NctnlEvent_Type type, NodeNum dest, ChannelIndex channel);
 
   protected:
     bool wantPacket(const meshtastic_MeshPacket *p) override;
