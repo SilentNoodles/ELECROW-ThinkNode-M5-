@@ -29,7 +29,7 @@ uint8_t getWifiDisconnectReason();
 #ifdef ARCH_ESP32
 enum class TemporaryWifiApState { INACTIVE, STARTING, READY, FAILED };
 
-bool startTemporaryWifiAp(const char *ssid, const char *password);
+bool startTemporaryWifiAp(const char *ssid);
 void stopTemporaryWifiAp();
 TemporaryWifiApState getTemporaryWifiApState();
 #endif

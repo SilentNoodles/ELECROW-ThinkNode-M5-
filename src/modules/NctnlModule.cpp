@@ -34,8 +34,8 @@ int32_t NctnlModule::runOnce()
                 webConfigActive = true;
                 webConfigStartedAt = millis();
                 char details[160];
-                snprintf(details, sizeof(details), "NCTNL WEB CONFIG\nWi-Fi: %s\nPassword: %s\nOpen: 192.168.4.1",
-                         webConfigSsid, webConfigPassword);
+                snprintf(details, sizeof(details), "NCTNL WEB CONFIG\nWi-Fi: %s\nOpen: 192.168.4.1\nNo password required",
+                         webConfigSsid);
                 static const char *options[] = {"Stop"};
                 graphics::BannerOverlayOptions banner;
                 banner.message = details;
@@ -69,9 +69,8 @@ bool NctnlModule::startWebConfig()
         return true;
     const uint16_t suffix = nodeDB->getNodeNum() & 0xffff;
     snprintf(webConfigSsid, sizeof(webConfigSsid), "NCTNL-M5-%04X", suffix);
-    snprintf(webConfigPassword, sizeof(webConfigPassword), "Nctnl%04X!", suffix);
     LOG_INFO("NCTNL Web Config requested");
-    if (!startTemporaryWifiAp(webConfigSsid, webConfigPassword)) {
+    if (!startTemporaryWifiAp(webConfigSsid)) {
         LOG_ERROR("NCTNL Web Config startup failed: WiFi/AP request rejected");
         stopTemporaryWifiAp();
         return false;
