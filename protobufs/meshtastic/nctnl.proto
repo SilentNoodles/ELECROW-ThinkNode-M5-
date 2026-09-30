@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package meshtastic;
+
+option csharp_namespace = "Meshtastic.Protobufs";
+option go_package = "github.com/meshtastic/go/generated";
+option java_outer_classname = "NctnlProtos";
+option java_package = "org.meshtastic.proto";
+option swift_prefix = "";
+
+/*
+ * Machine-readable events exchanged by NCTNL nodes.
+ */
+message NctnlEvent {
+  enum Type {
+    UNKNOWN = 0;
+    GOING_OFFLINE = 1;
+    STANDBY = 2;
+    CHECK_IN = 3;
+    ASSISTANCE = 4;
+    ALL_CLEAR = 5;
+  }
+
+  uint32 protocol_version = 1;
+  Type type = 2;
+  uint32 event_id = 3;
+}

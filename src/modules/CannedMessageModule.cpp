@@ -6,6 +6,7 @@
 #include "CannedMessageModule.h"
 #include "Channels.h"
 #include "FSCommon.h"
+#include "GPSStatus.h"
 #include "MeshService.h"
 #include "MessageStore.h"
 #include "NodeDB.h"
@@ -120,6 +121,26 @@ void CannedMessageModule::LaunchRepeatDestination()
     } else {
         LaunchWithDestination(lastDest, lastChannel);
     }
+}
+
+void CannedMessageModule::LaunchNctnlQuickMessageMenu()
+{
+    LaunchWithDestination(NODENUM_BROADCAST);
+    nctnlQuickMessageMenu = true;
+
+    static char selectDestination[] = "[Select Destination]";
+    static char goingOffline[] = "Going Offline";
+    static char goingStandby[] = "Going Standby";
+    static char checkIn[] = "Check In";
+    static char needAssistance[] = "Need Assistance";
+    static char allClear[] = "All Clear";
+    static char sendCoordinates[] = "[Send Coordinates]";
+    static char freeText[] = "[- Free Text -]";
+    static char exit[] = "[Exit]";
+    static char *nctnlMessages[] = {selectDestination, goingOffline, goingStandby, checkIn, needAssistance,
+                                    allClear,          sendCoordinates, freeText, exit};
+    messagesCount = sizeof(nctnlMessages) / sizeof(nctnlMessages[0]);
+    memcpy(messages, nctnlMessages, sizeof(nctnlMessages));
 }
 
 void CannedMessageModule::LaunchFreetextWithDestination(NodeNum newDest, uint8_t newChannel)
@@ -456,6 +477,12 @@ int CannedMessageModule::handleInputEvent(const InputEvent *event)
 
     case CANNED_MESSAGE_RUN_STATE_INACTIVE:
         if (event->inputEvent == INPUT_BROKER_ALT_LONG) {
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+            if (nctnlModule && nctnlModule->isQuickMenuEnabled()) {
+                LaunchNctnlQuickMessageMenu();
+                return 1;
+            }
+#endif
             LaunchWithDestination(NODENUM_BROADCAST);
             return 1;
         }
@@ -488,6 +515,10 @@ int CannedMessageModule::handleInputEvent(const InputEvent *event)
 void CannedMessageModule::updateState(cannedMessageModuleRunState newState, bool shouldRequestFocus)
 {
     runState = newState;
+    if (runState == CANNED_MESSAGE_RUN_STATE_INACTIVE && nctnlQuickMessageMenu) {
+        nctnlQuickMessageMenu = false;
+        splitConfiguredMessages();
+    }
     if (runState == CANNED_MESSAGE_RUN_STATE_FREETEXT) {
         inputBroker->menuMode =
             false; // Allow any key input to be sent to the message composer instead of being interpreted as menu navigation
@@ -728,9 +759,49 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
             return true;
         }
 
+        if (nctnlQuickMessageMenu &&
+            (strcmp(current, "Going Offline") == 0 || strcmp(current, "Going Standby") == 0 ||
+             strcmp(current, "Check In") == 0 || strcmp(current, "Need Assistance") == 0 ||
+             strcmp(current, "All Clear") == 0)) {
+            const char *message = nullptr;
+            if (strcmp(current, "Going Offline") == 0)
+                message = "NCTNL STATUS: Going Offline\nThis node is going offline and will no longer be available for "
+                          "communications until it returns online.";
+            else if (strcmp(current, "Going Standby") == 0)
+                message = "NCTNL STATUS: Going Standby\nThis node is entering standby. Communications remain available, but "
+                          "responses may be delayed.";
+            else if (strcmp(current, "Check In") == 0)
+                message = "NCTNL CHECK-IN: Status Confirmed\nThis node has checked in successfully. Everything is OK and no "
+                          "assistance is currently required.";
+            else if (strcmp(current, "Need Assistance") == 0)
+                message = "NCTNL ASSISTANCE: Assistance Requested\nNon-emergency assistance has been requested. Please respond when "
+                          "available to establish contact and determine what assistance is required.";
+            else if (strcmp(current, "All Clear") == 0)
+                message = "NCTNL STATUS: All Clear\nThe previous situation has been resolved. No further assistance is currently "
+                          "required.";
+
+            sendText(dest, channel, message, true);
+            return true;
+        }
+
+        if (nctnlQuickMessageMenu && strcmp(current, "[Send Coordinates]") == 0) {
+#if !MESHTASTIC_EXCLUDE_GPS
+            if (gpsStatus && gpsStatus->getHasLock() && gpsStatus->getLastFixMillis() != 0) {
+                char coordinates[64];
+                snprintf(coordinates, sizeof(coordinates), "Coordinates: %.6f, %.6f", gpsStatus->getLatitude() * 1e-7,
+                         gpsStatus->getLongitude() * 1e-7);
+                sendText(dest, channel, coordinates, true);
+            } else
+#endif
+            {
+                screen->showSimpleBanner("No GPS fix", 2500);
+            }
+            return true;
+        }
+
         // [Free Text] triggers the free text input (virtual keyboard)
 #if defined(USE_VIRTUAL_KEYBOARD)
-        if (strcmp(current, "[-- Free Text --]") == 0) {
+        if (strcmp(current, "[-- Free Text --]") == 0 || strcmp(current, "[- Free Text -]") == 0) {
             updateState(CANNED_MESSAGE_RUN_STATE_FREETEXT, true);
             UIFrameEvent e;
             e.action = UIFrameEvent::Action::REGENERATE_FRAMESET;
@@ -738,7 +809,7 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
             return true;
         }
 #else
-        if (strcmp(current, "[-- Free Text --]") == 0) {
+        if (strcmp(current, "[-- Free Text --]") == 0 || strcmp(current, "[- Free Text -]") == 0) {
             if (osk_found && screen) {
                 char headerBuffer[64];
                 if (this->dest == NODENUM_BROADCAST) {
