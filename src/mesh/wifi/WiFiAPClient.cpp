@@ -31,6 +31,8 @@
 static void WiFiEvent(WiFiEvent_t event);
 static bool wifiEventHandlerRegistered;
 static bool temporaryApActive;
+static bool temporaryApConfigured;
+static bool temporaryApStartObserved;
 static bool temporaryApModeChanged;
 static wifi_mode_t temporaryApPreviousMode = WIFI_MODE_NULL;
 static TemporaryWifiApState temporaryApState = TemporaryWifiApState::INACTIVE;
@@ -93,27 +95,26 @@ bool startTemporaryWifiAp(const char *ssid, const char *password)
     LOG_INFO("Temporary WiFi AP startup requested");
     temporaryApState = TemporaryWifiApState::STARTING;
     temporaryApPreviousMode = WiFi.getMode();
+    temporaryApActive = true;
+    temporaryApConfigured = false;
+    temporaryApStartObserved = false;
     registerWiFiEventHandler();
     WiFi.persistent(false);
 
-    wifi_mode_t requestedMode = temporaryApPreviousMode == WIFI_MODE_STA || temporaryApPreviousMode == WIFI_MODE_APSTA
-                                    ? WIFI_MODE_APSTA
-                                    : WIFI_MODE_AP;
-    if (!WiFi.mode(requestedMode)) {
-        LOG_ERROR("Temporary WiFi AP failed: unable to set WiFi mode");
-        temporaryApState = TemporaryWifiApState::FAILED;
-        return false;
-    }
-    temporaryApModeChanged = requestedMode != temporaryApPreviousMode;
     if (!WiFi.softAP(ssid, password)) {
         LOG_ERROR("Temporary WiFi AP failed: softAP startup rejected");
+        temporaryApActive = false;
+        temporaryApModeChanged = WiFi.getMode() != temporaryApPreviousMode;
         temporaryApState = TemporaryWifiApState::FAILED;
         return false;
     }
 
-    temporaryApActive = true;
-    temporaryApState = TemporaryWifiApState::READY;
-    LOG_INFO("Temporary WiFi AP ready at %s", WiFi.softAPIP().toString().c_str());
+    temporaryApConfigured = true;
+    temporaryApModeChanged = WiFi.getMode() != temporaryApPreviousMode;
+    if (temporaryApStartObserved) {
+        temporaryApState = TemporaryWifiApState::READY;
+        LOG_INFO("Temporary WiFi AP ready at %s", WiFi.softAPIP().toString().c_str());
+    }
     return true;
 }
 
@@ -128,6 +129,8 @@ void stopTemporaryWifiAp()
     if (temporaryApModeChanged && WiFi.getMode() != temporaryApPreviousMode)
         WiFi.mode(temporaryApPreviousMode);
     temporaryApActive = false;
+    temporaryApConfigured = false;
+    temporaryApStartObserved = false;
     temporaryApModeChanged = false;
     temporaryApState = TemporaryWifiApState::INACTIVE;
     LOG_INFO("Temporary WiFi AP stopped");
@@ -592,16 +595,23 @@ static void WiFiEvent(WiFiEvent_t event)
         break;
     case ARDUINO_EVENT_WIFI_AP_START:
         LOG_INFO("WiFi access point started");
-        if (temporaryApActive)
-            temporaryApState = TemporaryWifiApState::READY;
+        if (temporaryApActive) {
+            temporaryApStartObserved = true;
+            if (temporaryApConfigured) {
+                temporaryApState = TemporaryWifiApState::READY;
+                LOG_INFO("Temporary WiFi AP ready at %s", WiFi.softAPIP().toString().c_str());
+            }
+        }
 #ifdef WIFI_LED
         digitalWrite(WIFI_LED, LOW ^ WIFI_STATE_ON);
 #endif
         break;
     case ARDUINO_EVENT_WIFI_AP_STOP:
         LOG_INFO("WiFi access point stopped");
-        if (temporaryApActive)
+        if (temporaryApActive) {
+            temporaryApStartObserved = false;
             temporaryApState = TemporaryWifiApState::STARTING;
+        }
 #ifdef WIFI_LED
         digitalWrite(WIFI_LED, HIGH ^ WIFI_STATE_ON);
 #endif
