@@ -29,6 +29,13 @@
 #include <ESPmDNS.h>
 #include <esp_wifi.h>
 static void WiFiEvent(WiFiEvent_t event);
+static bool wifiEventHandlerRegistered;
+static bool temporaryApActive;
+static bool temporaryApConfigured;
+static bool temporaryApStartObserved;
+static bool temporaryApModeChanged;
+static wifi_mode_t temporaryApPreviousMode = WIFI_MODE_NULL;
+static TemporaryWifiApState temporaryApState = TemporaryWifiApState::INACTIVE;
 #elif defined(ARCH_RP2040)
 #include <SimpleMDNS.h>
 #endif
@@ -70,6 +77,70 @@ WiFiUDP syslogClient;
 meshtastic::Syslog syslog(syslogClient);
 
 Periodic *wifiReconnect;
+
+#ifdef ARCH_ESP32
+static void registerWiFiEventHandler()
+{
+    if (!wifiEventHandlerRegistered) {
+        WiFi.onEvent(WiFiEvent);
+        wifiEventHandlerRegistered = true;
+    }
+}
+
+bool startTemporaryWifiAp(const char *ssid, const char *password)
+{
+    if (temporaryApState == TemporaryWifiApState::STARTING || temporaryApState == TemporaryWifiApState::READY)
+        return true;
+
+    LOG_INFO("Temporary WiFi AP startup requested");
+    temporaryApState = TemporaryWifiApState::STARTING;
+    temporaryApPreviousMode = WiFi.getMode();
+    temporaryApActive = true;
+    temporaryApConfigured = false;
+    temporaryApStartObserved = false;
+    registerWiFiEventHandler();
+    WiFi.persistent(false);
+
+    if (!WiFi.softAP(ssid, password)) {
+        LOG_ERROR("Temporary WiFi AP failed: softAP startup rejected");
+        temporaryApActive = false;
+        temporaryApModeChanged = WiFi.getMode() != temporaryApPreviousMode;
+        temporaryApState = TemporaryWifiApState::FAILED;
+        return false;
+    }
+
+    temporaryApConfigured = true;
+    temporaryApModeChanged = WiFi.getMode() != temporaryApPreviousMode;
+    if (temporaryApStartObserved) {
+        temporaryApState = TemporaryWifiApState::READY;
+        LOG_INFO("Temporary WiFi AP ready at %s", WiFi.softAPIP().toString().c_str());
+    }
+    return true;
+}
+
+void stopTemporaryWifiAp()
+{
+    if (!temporaryApActive && temporaryApState == TemporaryWifiApState::INACTIVE)
+        return;
+
+    LOG_INFO("Temporary WiFi AP shutdown requested");
+    if (temporaryApActive)
+        WiFi.softAPdisconnect(false);
+    if (temporaryApModeChanged && WiFi.getMode() != temporaryApPreviousMode)
+        WiFi.mode(temporaryApPreviousMode);
+    temporaryApActive = false;
+    temporaryApConfigured = false;
+    temporaryApStartObserved = false;
+    temporaryApModeChanged = false;
+    temporaryApState = TemporaryWifiApState::INACTIVE;
+    LOG_INFO("Temporary WiFi AP stopped");
+}
+
+TemporaryWifiApState getTemporaryWifiApState()
+{
+    return temporaryApState;
+}
+#endif
 
 #if defined(USE_WS5500) || defined(USE_CH390D)
 static void onNetworkConnected();
@@ -368,7 +439,7 @@ bool initWifi()
             // Register WiFi event handler BEFORE createSSLCert() to prevent race condition:
             // Without this, WiFi can auto-reconnect during cert generation and fire GOT_IP
             // before the handler is registered, causing onNetworkConnected() to never run.
-            WiFi.onEvent(WiFiEvent);
+            registerWiFiEventHandler();
             WiFi.setAutoReconnect(true);
             WiFi.setSleep(false);
 
@@ -524,12 +595,23 @@ static void WiFiEvent(WiFiEvent_t event)
         break;
     case ARDUINO_EVENT_WIFI_AP_START:
         LOG_INFO("WiFi access point started");
+        if (temporaryApActive) {
+            temporaryApStartObserved = true;
+            if (temporaryApConfigured) {
+                temporaryApState = TemporaryWifiApState::READY;
+                LOG_INFO("Temporary WiFi AP ready at %s", WiFi.softAPIP().toString().c_str());
+            }
+        }
 #ifdef WIFI_LED
         digitalWrite(WIFI_LED, LOW ^ WIFI_STATE_ON);
 #endif
         break;
     case ARDUINO_EVENT_WIFI_AP_STOP:
         LOG_INFO("WiFi access point stopped");
+        if (temporaryApActive) {
+            temporaryApStartObserved = false;
+            temporaryApState = TemporaryWifiApState::STARTING;
+        }
 #ifdef WIFI_LED
         digitalWrite(WIFI_LED, HIGH ^ WIFI_STATE_ON);
 #endif
