@@ -26,6 +26,14 @@ bool isWifiAvailable();
 
 uint8_t getWifiDisconnectReason();
 
+#ifdef ARCH_ESP32
+enum class TemporaryWifiApState { INACTIVE, STARTING, READY, FAILED };
+
+bool startTemporaryWifiAp(const char *ssid, const char *password);
+void stopTemporaryWifiAp();
+TemporaryWifiApState getTemporaryWifiApState();
+#endif
+
 #if defined(USE_WS5500) || defined(USE_CH390D)
 // Startup Ethernet
 bool initEthernet();

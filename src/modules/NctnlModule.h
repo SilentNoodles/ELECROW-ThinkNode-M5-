@@ -21,8 +21,12 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     int32_t runOnce() override;
 #if defined(ELECROW_ThinkNode_M5)
     bool webConfigActive = false;
+    bool webConfigStarting = false;
+    uint32_t webConfigRequestedAt = 0;
     uint32_t webConfigStartedAt = 0;
     uint32_t restartAt = 0;
+    char webConfigSsid[20] = {};
+    char webConfigPassword[16] = {};
 #endif
 };
 
