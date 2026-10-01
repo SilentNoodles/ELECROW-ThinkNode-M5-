@@ -39,7 +39,7 @@ int32_t StatusMessageModule::runOnce()
         p->decoded.want_response = false;
         p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
         p->channel = 0;
-        service->sendToMesh(p);
+        service->sendToMesh(p, RX_SRC_LOCAL, true);
     }
 
     return 1000 * 12 * 60 * 60;
