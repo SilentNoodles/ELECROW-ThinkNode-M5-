@@ -3,6 +3,10 @@
 #include "NctnlDevelopmentConfig.h"
 #include "NodeDB.h"
 #include "configuration.h"
+#if !MESHTASTIC_EXCLUDE_STATUS
+#include "StatusMessageModule.h"
+#endif
+#include <string>
 #if HAS_SCREEN
 #include "graphics/Screen.h"
 #endif
@@ -10,6 +14,16 @@
 namespace
 {
 constexpr uint32_t NCTNL_PROTOCOL_VERSION = 1;
+
+std::string trim(const std::string &value)
+{
+    const size_t first = value.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) {
+        return "";
+    }
+    const size_t last = value.find_last_not_of(" \t\r\n");
+    return value.substr(first, last - first + 1);
+}
 
 const char *eventMessage(meshtastic_NctnlEvent_Type type)
 {
@@ -52,14 +66,58 @@ bool NctnlModule::isQuickMenuEnabled() const
     return isEnabled() && NctnlDevelopmentConfig::QUICK_MESSAGE_MENU_ENABLED;
 }
 
+bool NctnlModule::areAutomaticStatusUpdatesEnabled() const
+{
+    return isEnabled() && NctnlDevelopmentConfig::AUTOMATIC_STATUS_UPDATES_ENABLED;
+}
+
+bool NctnlModule::updateStatus(const char *status) const
+{
+    if (!areAutomaticStatusUpdatesEnabled()) {
+        return false;
+    }
+
+#if MESHTASTIC_EXCLUDE_STATUS
+    LOG_WARN("Skipping NCTNL status update because Status Message support is unavailable");
+    return false;
+#else
+    const std::string existing = moduleConfig.statusmessage.node_status;
+    std::string components[4];
+    size_t start = 0;
+    for (size_t i = 0; i < 4; ++i) {
+        const size_t separator = existing.find('|', start);
+        if ((i < 3 && separator == std::string::npos) || (i == 3 && separator != std::string::npos)) {
+            LOG_WARN("Skipping NCTNL status update because the existing Status Message is not in NCTNL format");
+            return false;
+        }
+        components[i] = trim(existing.substr(start, separator - start));
+        start = separator + 1;
+    }
+
+    if (components[0].empty() || components[1].empty() || components[2].empty() || components[3] != "NCTNL.io" ||
+        status == nullptr || trim(status).empty()) {
+        LOG_WARN("Skipping NCTNL status update because the existing Status Message is not in NCTNL format");
+        return false;
+    }
+
+    const std::string updated = components[0] + " | " + trim(status) + " | " + components[2] + " | NCTNL.io";
+    if (statusMessageModule == nullptr || !statusMessageModule->setStatusMessage(updated.c_str())) {
+        LOG_WARN("Unable to apply NCTNL status update");
+        return false;
+    }
+    return true;
+#endif
+}
+
 #if defined(ELECROW_ThinkNode_M5) && HAS_SCREEN
 void NctnlModule::showSettingsStatusPage() const
 {
-    static char status[240];
+    static char status[280];
     snprintf(status, sizeof(status),
-             "Development settings\n\nNCTNL Enabled: %s\nQuick Message Menu: %s\n\nValues shown here are currently hard-coded\nand "
-             "cannot be changed from this page.",
-             isEnabled() ? "Enabled" : "Disabled", isQuickMenuEnabled() ? "Enabled" : "Disabled");
+             "Development settings\n\nNCTNL Enabled: %s\nQuick Message Menu: %s\nAutomatic Status Updates: %s\n\nValues shown "
+             "here are currently hard-coded\nand cannot be changed from this page.",
+             isEnabled() ? "Enabled" : "Disabled", isQuickMenuEnabled() ? "Enabled" : "Disabled",
+             areAutomaticStatusUpdatesEnabled() ? "Enabled" : "Disabled");
 
     static const char *options[] = {"Back"};
     graphics::BannerOverlayOptions banner;

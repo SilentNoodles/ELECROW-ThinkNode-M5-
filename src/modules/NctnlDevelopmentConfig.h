@@ -4,4 +4,5 @@ namespace NctnlDevelopmentConfig {
 // Development-only values until NCTNL has a user-accessible settings source.
 inline constexpr bool NCTNL_ENABLED = true;
 inline constexpr bool QUICK_MESSAGE_MENU_ENABLED = true;
+inline constexpr bool AUTOMATIC_STATUS_UPDATES_ENABLED = true;
 } // namespace NctnlDevelopmentConfig

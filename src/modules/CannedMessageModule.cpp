@@ -767,23 +767,31 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
              strcmp(current, "Check In") == 0 || strcmp(current, "Need Assistance") == 0 ||
              strcmp(current, "All Clear") == 0)) {
             const char *message = nullptr;
-            if (strcmp(current, "Going Offline") == 0)
+            const char *status = nullptr;
+            if (strcmp(current, "Going Offline") == 0) {
                 message = "NCTNL STATUS: Going Offline\nThis node is going offline and will no longer be available for "
                           "communications until it returns online.";
-            else if (strcmp(current, "Going Standby") == 0)
+                status = "Offline";
+            } else if (strcmp(current, "Going Standby") == 0) {
                 message = "NCTNL STATUS: Going Standby\nThis node is entering standby. Communications remain available, but "
                           "responses may be delayed.";
-            else if (strcmp(current, "Check In") == 0)
+                status = "Standby";
+            } else if (strcmp(current, "Check In") == 0) {
                 message = "NCTNL CHECK-IN: Status Confirmed\nThis node has checked in successfully. Everything is OK and no "
                           "assistance is currently required.";
-            else if (strcmp(current, "Need Assistance") == 0)
+                status = "Online";
+            } else if (strcmp(current, "Need Assistance") == 0) {
                 message = "NCTNL ASSISTANCE: Assistance Requested\nNon-emergency assistance has been requested. Please respond when "
                           "available to establish contact and determine what assistance is required.";
-            else if (strcmp(current, "All Clear") == 0)
+                status = "Needs Assistance";
+            } else if (strcmp(current, "All Clear") == 0) {
                 message = "NCTNL STATUS: All Clear\nThe previous situation has been resolved. No further assistance is currently "
                           "required.";
+                status = "Online";
+            }
 
             sendText(dest, channel, message, true);
+            nctnlModule->updateStatus(status);
             currentMessageIndex = -1;
             freetext = "";
             cursor = 0;
