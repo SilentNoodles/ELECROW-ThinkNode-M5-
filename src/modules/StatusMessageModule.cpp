@@ -2,9 +2,28 @@
 
 #include "StatusMessageModule.h"
 #include "MeshService.h"
+#include "NodeDB.h"
 #include "ProtobufModule.h"
 
 StatusMessageModule *statusMessageModule;
+
+bool StatusMessageModule::setStatusMessage(const char *status)
+{
+    if (status == nullptr || strnlen(status, sizeof(moduleConfig.statusmessage.node_status)) >=
+                                 sizeof(moduleConfig.statusmessage.node_status)) {
+        return false;
+    }
+
+    moduleConfig.has_statusmessage = true;
+    strcpy(moduleConfig.statusmessage.node_status, status);
+    bool saved = nodeDB->saveToDisk(SEGMENT_MODULECONFIG);
+    if (!saved) {
+        LOG_WARN("Status message changed but could not be persisted");
+    }
+    runOnce();
+    setInterval(1000 * 12 * 60 * 60);
+    return true;
+}
 
 int32_t StatusMessageModule::runOnce()
 {

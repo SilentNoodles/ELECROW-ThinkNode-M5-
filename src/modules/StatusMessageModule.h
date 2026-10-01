@@ -22,6 +22,7 @@ class StatusMessageModule : public SinglePortModule, private concurrency::OSThre
     }
 
     virtual int32_t runOnce() override;
+    bool setStatusMessage(const char *status);
 
   protected:
     /** Called to handle a particular incoming message
