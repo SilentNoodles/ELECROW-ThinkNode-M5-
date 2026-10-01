@@ -784,6 +784,10 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
                           "required.";
 
             sendText(dest, channel, message, true);
+            currentMessageIndex = -1;
+            freetext = "";
+            cursor = 0;
+            updateState(CANNED_MESSAGE_RUN_STATE_INACTIVE);
             return true;
         }
 
