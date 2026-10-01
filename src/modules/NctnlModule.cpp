@@ -101,10 +101,15 @@ bool NctnlModule::updateStatus(const char *status) const
     }
 
     const std::string updated = components[0] + " | " + trim(status) + " | " + components[2] + " | NCTNL.io";
-    if (statusMessageModule == nullptr || !statusMessageModule->setStatusMessage(updated.c_str())) {
+    if (statusMessageModule == nullptr) {
+        LOG_WARN("Skipping NCTNL status update because the Status Message runtime instance is unavailable");
+        return false;
+    }
+    if (!statusMessageModule->setStatusMessage(updated.c_str())) {
         LOG_WARN("Unable to apply NCTNL status update");
         return false;
     }
+    LOG_INFO("NCTNL status update persisted and advertised");
     return true;
 #endif
 }
