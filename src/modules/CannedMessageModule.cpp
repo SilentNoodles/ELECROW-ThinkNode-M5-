@@ -806,6 +806,10 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
                 snprintf(coordinates, sizeof(coordinates), "Coordinates: %.6f, %.6f", gpsStatus->getLatitude() * 1e-7,
                          gpsStatus->getLongitude() * 1e-7);
                 sendText(dest, channel, coordinates, true);
+                currentMessageIndex = -1;
+                freetext = "";
+                cursor = 0;
+                updateState(CANNED_MESSAGE_RUN_STATE_INACTIVE);
             } else
 #endif
             {
