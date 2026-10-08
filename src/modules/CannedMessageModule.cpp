@@ -768,30 +768,39 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
              strcmp(current, "All Clear") == 0)) {
             const char *message = nullptr;
             const char *status = nullptr;
+            const char *dataType = nullptr;
             if (strcmp(current, "Going Offline") == 0) {
                 message = "NCTNL STATUS: Going Offline\nThis node is going offline and will no longer be available for "
                           "communications until it returns online.";
                 status = "Offline";
+                dataType = "going_offline";
             } else if (strcmp(current, "Going Standby") == 0) {
                 message = "NCTNL STATUS: Going Standby\nThis node is entering standby. Communications remain available, but "
                           "responses may be delayed.";
                 status = "Standby";
+                dataType = "standby";
             } else if (strcmp(current, "Check In") == 0) {
                 message = "NCTNL CHECK-IN: Status Confirmed\nThis node has checked in successfully. Everything is OK and no "
                           "assistance is currently required.";
                 status = "Online";
+                dataType = "check_in";
             } else if (strcmp(current, "Need Assistance") == 0) {
                 message = "NCTNL ASSISTANCE: Assistance Requested\nNon-emergency assistance has been requested. Please respond when "
                           "available to establish contact and determine what assistance is required.";
                 status = "Needs Assistance";
+                dataType = "assistance";
             } else if (strcmp(current, "All Clear") == 0) {
                 message = "NCTNL STATUS: All Clear\nThe previous situation has been resolved. No further assistance is currently "
                           "required.";
                 status = "Online";
+                dataType = "all_clear";
             }
 
             sendText(dest, channel, message, true);
             nctnlModule->updateStatus(status);
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+            nctnlModule->sendStatusDataEvent(dataType);
+#endif
             currentMessageIndex = -1;
             freetext = "";
             cursor = 0;
