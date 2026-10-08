@@ -129,6 +129,7 @@ void NctnlModule::showSettingsStatusPage() const
     banner.message = status;
     banner.optionsArrayPtr = options;
     banner.optionsCount = 1;
+    banner.bannerCallback = [](int) {};
     screen->showOverlayBanner(banner);
 }
 #endif

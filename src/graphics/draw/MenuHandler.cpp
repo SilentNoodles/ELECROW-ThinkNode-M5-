@@ -1007,8 +1007,7 @@ void menuHandler::homeBaseMenu()
             cannedMessageModule->LaunchFreetextWithDestination(NODENUM_BROADCAST);
 #if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
         } else if (selected == NctnlSettings) {
-            if (nctnlModule)
-                nctnlModule->showSettingsStatusPage();
+            menuHandler::menuQueue = menuHandler::NctnlSettingsPage;
 #endif
         }
     };
@@ -2815,6 +2814,12 @@ void menuHandler::handleMenuSwitch(OLEDDisplay *display)
     case MessageBubblesMenu:
         messageBubblesMenu();
         break;
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+    case NctnlSettingsPage:
+        if (nctnlModule)
+            nctnlModule->showSettingsStatusPage();
+        break;
+#endif
     }
     menuQueue = MenuNone;
 }
