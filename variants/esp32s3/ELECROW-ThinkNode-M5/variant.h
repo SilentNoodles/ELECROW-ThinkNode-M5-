@@ -79,7 +79,6 @@
 #define PIN_EINK_MOSI 45 // also called SDI
 
 // Controls power for all peripherals (eink + GPS + LoRa + Sensor)
-#define PIN_POWER_EN -1
 #define PCA_PIN_POWER_EN 4 // This is the pin number on the GPIO expander
 
 #define PIN_SPI_MISO 7
