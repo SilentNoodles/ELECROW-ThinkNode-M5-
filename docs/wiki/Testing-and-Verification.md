@@ -38,15 +38,15 @@ Physical testing has confirmed, among other items:
 
 ## Stage 4
 
-| Test | Item | Result |
+| Build | Item | Result |
 | --- | --- | --- |
-| S4-01 | Stage 4 | Verified |
-| S4-02 | Stage 4 | Verified |
-| S4-03 | NCTNL Quiet, Online at start-up (PR #30) | Verified |
+| S4-01 | First Stage 4 build. `NCTNL_DATA` JSON v1 events correct; implicit ACK by rebroadcast seen; missing-channel fail-safe works | Verified |
+| S4-02 | Data events moved to `TEXT_MESSAGE_APP`; `NCTNL_DATA` text suppressed on Field Nodes (still relayed); Assistance Request received banner and repeating siren; Mute silences it; boot-time invalid GPIO message gone | Verified |
+| S4-03 | NCTNL Quiet (Standby/Offline mute broadcast text; DMs, assistance and battery alerts still sound); Online at start-up and after reboot; manual Mute unchanged (PR #30) | Verified |
 | — | Battery alerts, Emergency → Offline and charging restore on a real discharge | Pending |
 | — | Quick Chat picker hides `NCTNL_DATA` / `NCTNL_CTRL` | Pending |
 
-The NCTNL Settings crash fix (PR #28), the boot-time GPIO fix and NCTNL_DATA events have also been verified on the device.
+The NCTNL Settings crash fix (PR #28) has also been verified on the device.
 
 ## Regression priorities
 
