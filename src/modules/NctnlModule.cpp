@@ -351,6 +351,30 @@ bool NctnlModule::updateStatus(const char *status) const
 #endif
 }
 
+bool NctnlModule::isQuiet() const
+{
+    return isEnabled() && quiet;
+}
+
+void NctnlModule::handleStatusAction(const char *status)
+{
+    setStatusState(status);
+}
+
+void NctnlModule::setStatusState(const char *status)
+{
+    if (status == nullptr) {
+        return;
+    }
+    snprintf(currentStatus, sizeof(currentStatus), "%s", status);
+    if (strcmp(status, "Offline") == 0 || strcmp(status, "Standby") == 0) {
+        quiet = true;
+    } else if (strcmp(status, "Online") == 0) {
+        quiet = false;
+    }
+    LOG_INFO("NCTNL status %s, Quiet %s", currentStatus, quiet ? "on" : "off");
+}
+
 #if defined(ELECROW_ThinkNode_M5) && HAS_SCREEN
 void NctnlModule::showSettingsStatusPage() const
 {

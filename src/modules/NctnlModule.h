@@ -12,6 +12,8 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     bool isQuickMenuEnabled() const;
     bool areAutomaticStatusUpdatesEnabled() const;
     bool updateStatus(const char *status) const;
+    bool isQuiet() const;
+    void handleStatusAction(const char *status);
     bool sendEvent(meshtastic_NctnlEvent_Type type, NodeNum dest, ChannelIndex channel);
     int findChannelByName(const char *name) const;
     bool playAlertTone(const char *tone);
@@ -34,6 +36,7 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     void fireBatteryAlert(int level, uint8_t percent);
     void updateAlertToneRepeat();
     void startRepeatingAlert(const char *banner, const char *tone, bool stopOnExternalPower);
+    void setStatusState(const char *status);
 
     bool alertTonePlaying = false;
     const char *repeatingAlertTone = nullptr;
@@ -44,6 +47,9 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     bool batteryAlertSinceAllClear = false;
     bool onExternalPower = false;
     uint32_t externalPowerSinceMs = 0;
+    // RAM-only; never persisted.
+    bool quiet = false;
+    char currentStatus[24] = "";
 };
 
 extern NctnlModule *nctnlModule;
