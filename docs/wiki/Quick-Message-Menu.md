@@ -10,6 +10,8 @@ NCTNL reuses the existing Meshtastic destination-selection flow.
 
 Messages can therefore be directed to the selected channel or an individual node according to the normal Meshtastic message path.
 
+The picker hides the `NCTNL_DATA` and `NCTNL_CTRL` channels (exact, case-sensitive name match) while NCTNL is enabled. `NCTNL_COMMS`, LongFast and other channels, and direct-message nodes, still appear.
+
 ## Predefined messages
 
 ### Going Offline
@@ -61,6 +63,4 @@ Automatic status mapping: **Online**
 
 These five actions use the normal Meshtastic `TEXT_MESSAGE_APP` path.
 
-They do **not** rely on NCTNL `PRIVATE_APP` structured packets, because their primary purpose is to communicate readable information to people.
-
-The structured NCTNL event foundation is retained separately for future machine-to-machine functions.
+Their primary purpose is to communicate readable information to people. Each status action also sends a separate machine-readable NCTNL_DATA `sts` event on the `NCTNL_DATA` channel.

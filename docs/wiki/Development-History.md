@@ -75,6 +75,12 @@ The same proven post-send cleanup used by predefined NCTNL Quick Messages was ap
 
 Physical testing confirmed the issue was resolved.
 
+## Stage 4 fixes
+
+- **NCTNL Settings reboot** (PR #28): opening NCTNL Settings caused an abort from an empty `std::function` in the banner callback path. The page is now queued via `menuQueue` with a no-op banner callback. Verified on the device.
+- **Boot-time invalid GPIO message**: fixed by removing `PIN_POWER_EN -1` from the ThinkNode M5 variant. Verified on the device.
+- **Battery telemetry 101%**: traced to upstream Meshtastic `DeviceTelemetry`, which reports 101 while on USB or charging. Not an NCTNL bug.
+
 ## Current verified milestone
 
 Current physically verified build:

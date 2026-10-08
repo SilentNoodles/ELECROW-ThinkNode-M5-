@@ -20,8 +20,16 @@ The current field-node firmware includes:
 - Offline status on battery Emergency, restored on the charging all-clear;
 - NCTNL Quiet: broadcast message notifications are skipped while the status is Offline or Standby (direct messages still alert; Meshtastic Mute is unchanged);
 - correct post-send UI cleanup for predefined Quick Messages and Send Coordinates;
+- NCTNL_DATA JSON v1 events (`sts`, `bat`) sent as `TEXT_MESSAGE_APP` on the `NCTNL_DATA` channel;
+- read-only NCTNL Settings page (the earlier crash is fixed);
 - NCTNL branding; and
 - central development configuration for currently hard-coded NCTNL feature enablement.
+
+## Implemented, not yet physically verified
+
+- battery low/critical/emergency alerts, the Emergency → Offline change and the charging restore (real-discharge test pending);
+- non-blocking RTTTL alert tones (only Warning, BatteryLow and siren are wired in); and
+- the Quick Chat destination picker hides `NCTNL_DATA` and `NCTNL_CTRL`.
 
 ## Predefined Quick Messages
 
@@ -33,24 +41,21 @@ The current actions are:
 - Need Assistance
 - All Clear
 
-These are transmitted as normal Meshtastic text messages, not as structured NCTNL events.
+These are transmitted as normal Meshtastic text messages. Each status action also sends a matching NCTNL_DATA `sts` event.
 
 ## Current structured-event foundation
 
-A minimal `NctnlEvent` protobuf and NCTNL module packet path already exist. They currently use Meshtastic `PRIVATE_APP`.
-
-This foundation remains for future machine-to-machine functionality. It must not be confused with the human-readable Quick Message transport.
+Machine-readable events are compact JSON sent as `TEXT_MESSAGE_APP` on the `NCTNL_DATA` channel, so all routers relay them. See `docs/nctnl-data-spec.md`. NCTNL_DATA text received by the node is not stored or shown as a message; an assistance request shows an alert banner instead.
 
 ## Not yet implemented as completed functionality
 
 Examples of planned work include:
 
-- a permanent NCTNL PortNum;
-- formal structured event protocol;
 - presence and heartbeat;
-- battery events;
 - ping/response;
-- shared RTTTL/audio framework;
+- the remaining NCTNL audio alerts;
+- battery curve (OCV) correction;
+- last-known GPS persistence across reboot;
 - location/privacy framework;
 - SOS activation, transmission and cancellation;
 - Base Station emergency handling;

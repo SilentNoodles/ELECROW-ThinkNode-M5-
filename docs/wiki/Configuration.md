@@ -17,8 +17,14 @@ During active development, effective feature enablement is currently centralised
 Current development flags enable:
 
 - NCTNL;
-- Quick Message Menu; and
-- automatic status updates.
+- Quick Message Menu;
+- automatic status updates;
+- battery alerts and NCTNL_DATA events; and
+- the `NCTNL_DATA`, `NCTNL_COMMS` and `NCTNL_CTRL` channel names.
+
+## Build-time defaults (`userPrefs.jsonc`)
+
+`USERPREFS_RINGTONE_NAG_SECS` is set to `1`, so the message notification nag lasts 1 s. It is a default only: it applies on a fresh install or factory reset. A device with a stored external notification config keeps its existing nag timeout.
 
 ## Settings/status page
 

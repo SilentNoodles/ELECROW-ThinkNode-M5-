@@ -36,6 +36,18 @@ Physical testing has confirmed, among other items:
 - live status refresh after the final local-client notification fix; and
 - correct Send Coordinates post-send UI cleanup.
 
+## Stage 4
+
+| Test | Item | Result |
+| --- | --- | --- |
+| S4-01 | Stage 4 | Verified |
+| S4-02 | Stage 4 | Verified |
+| S4-03 | NCTNL Quiet, Online at start-up (PR #30) | Verified |
+| — | Battery alerts, Emergency → Offline and charging restore on a real discharge | Pending |
+| — | Quick Chat picker hides `NCTNL_DATA` / `NCTNL_CTRL` | Pending |
+
+The NCTNL Settings crash fix (PR #28), the boot-time GPIO fix and NCTNL_DATA events have also been verified on the device.
+
 ## Regression priorities
 
 Future regression testing should cover:
