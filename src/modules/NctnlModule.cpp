@@ -324,12 +324,23 @@ bool NctnlModule::updateStatus(const char *status) const
 #if defined(ELECROW_ThinkNode_M5) && HAS_SCREEN
 void NctnlModule::showSettingsStatusPage() const
 {
+    const char *channelNames[] = {NctnlDevelopmentConfig::DATA_CHANNEL_NAME, NctnlDevelopmentConfig::COMMS_CHANNEL_NAME,
+                                  NctnlDevelopmentConfig::CTRL_CHANNEL_NAME};
+    char channelTexts[3][4];
+    for (size_t i = 0; i < 3; i++) {
+        const int index = findChannelByName(channelNames[i]);
+        if (index < 0) {
+            snprintf(channelTexts[i], sizeof(channelTexts[i]), "-");
+        } else {
+            snprintf(channelTexts[i], sizeof(channelTexts[i]), "%d", index);
+        }
+    }
+
     static char status[280];
-    snprintf(status, sizeof(status),
-             "Development settings\n\nNCTNL Enabled: %s\nQuick Message Menu: %s\nAutomatic Status Updates: %s\n\nValues shown "
-             "here are currently hard-coded\nand cannot be changed from this page.",
-             isEnabled() ? "Enabled" : "Disabled", isQuickMenuEnabled() ? "Enabled" : "Disabled",
-             areAutomaticStatusUpdatesEnabled() ? "Enabled" : "Disabled");
+    snprintf(status, sizeof(status), "NCTNL Settings\nNCTNL:%s QMsg:%s\nStatus:%s Batt:%s\nDATA:%s COMMS:%s\nCTRL:%s Read-only",
+             isEnabled() ? "On" : "Off", isQuickMenuEnabled() ? "On" : "Off", areAutomaticStatusUpdatesEnabled() ? "On" : "Off",
+             isEnabled() && NctnlDevelopmentConfig::BATTERY_ALERTS_ENABLED ? "On" : "Off", channelTexts[0], channelTexts[1],
+             channelTexts[2]);
 
     static const char *options[] = {"Back"};
     graphics::BannerOverlayOptions banner;
