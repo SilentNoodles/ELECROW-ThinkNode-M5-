@@ -62,6 +62,24 @@ void formatCoordinate(int32_t value, char *out, size_t size)
              static_cast<unsigned long>(magnitude % 10000000UL));
 }
 
+bool extractJsonString(const char *json, const char *key, char *out, size_t size)
+{
+    const char *value = strstr(json, key);
+    if (value == nullptr) {
+        return false;
+    }
+    value += strlen(key);
+    size_t o = 0;
+    for (; *value != '\0' && *value != '"' && o + 1 < size; value++) {
+        if (*value == '\\' && value[1] != '\0') {
+            value++;
+        }
+        out[o++] = *value;
+    }
+    out[o] = '\0';
+    return o > 0;
+}
+
 void escapeJson(const char *in, char *out, size_t size)
 {
     size_t o = 0;
@@ -190,11 +208,12 @@ int32_t NctnlModule::runOnce()
         }
     }
 
-    if (isEnabled() && NctnlDevelopmentConfig::BATTERY_ALERTS_ENABLED) {
-        if (!Throttle::isWithinTimespanMs(lastBatteryCheckMs, BATTERY_CHECK_MS)) {
-            lastBatteryCheckMs = millis();
-            checkBattery();
-        }
+    if (isEnabled() && NctnlDevelopmentConfig::BATTERY_ALERTS_ENABLED &&
+        !Throttle::isWithinTimespanMs(lastBatteryCheckMs, BATTERY_CHECK_MS)) {
+        lastBatteryCheckMs = millis();
+        checkBattery();
+    }
+    if (isEnabled()) {
         updateAlertToneRepeat();
     }
     return alertTonePlaying ? ALERT_TONE_STEP_MS : MONITOR_POLL_MS;
@@ -250,15 +269,21 @@ void NctnlModule::fireBatteryAlert(int level, uint8_t percent)
     batteryAlertSinceAllClear = true;
     sendBatteryDataEvent(BATTERY_EVENT_TYPES[level]);
 
+    char banner[32];
+    snprintf(banner, sizeof(banner), "%s\n%u%%", BATTERY_BANNER_TITLES[level], percent);
+    startRepeatingAlert(banner, BATTERY_TONES[level], true);
+}
+
+void NctnlModule::startRepeatingAlert(const char *banner, const char *tone, bool stopOnExternalPower)
+{
 #if HAS_SCREEN
     if (screen) {
-        char banner[32];
-        snprintf(banner, sizeof(banner), "%s\n%u%%", BATTERY_BANNER_TITLES[level], percent);
         screen->showSimpleBanner(banner, NctnlDevelopmentConfig::ALERT_BANNER_SECONDS * 1000);
     }
 #endif
 
-    repeatingAlertTone = BATTERY_TONES[level];
+    repeatingAlertTone = tone;
+    repeatStopsOnExternalPower = stopOnExternalPower;
     lastAlertToneMs = millis();
     playAlertTone(repeatingAlertTone);
 }
@@ -273,7 +298,7 @@ void NctnlModule::updateAlertToneRepeat()
 #if HAS_SCREEN
     bannerShowing = screen && screen->isOverlayBannerShowing();
 #endif
-    if (!bannerShowing || hasExternalPower()) {
+    if (!bannerShowing || (repeatStopsOnExternalPower && hasExternalPower())) {
         repeatingAlertTone = nullptr;
         return;
     }
@@ -463,6 +488,59 @@ bool NctnlModule::sendDataEvent(bool batteryEvent, const char *type)
         LOG_INFO("NCTNL_DATA %d/%d: %.*s", i + 1, parts, partLen, json + i * DATA_LOG_CHUNK);
     }
     service->sendToMesh(packet, RX_SRC_LOCAL, true);
+    return true;
+}
+
+bool NctnlModule::isDataChannelText(const meshtastic_MeshPacket &mp) const
+{
+    if (!isEnabled() || mp.which_payload_variant != meshtastic_MeshPacket_decoded_tag ||
+        mp.decoded.portnum != meshtastic_PortNum_TEXT_MESSAGE_APP || !isBroadcast(mp.to)) {
+        return false;
+    }
+    const int channel = findChannelByName(NctnlDevelopmentConfig::DATA_CHANNEL_NAME);
+    return channel >= 0 && mp.channel == channel;
+}
+
+// Returns true when the text belongs to NCTNL_DATA and must not be stored, shown or notified as a message.
+bool NctnlModule::handleDataText(const meshtastic_MeshPacket &mp)
+{
+    if (!isDataChannelText(mp)) {
+        return false;
+    }
+
+    char body[meshtastic_Constants_DATA_PAYLOAD_LEN + 1];
+    const size_t size = mp.decoded.payload.size < sizeof(body) - 1 ? mp.decoded.payload.size : sizeof(body) - 1;
+    memcpy(body, mp.decoded.payload.bytes, size);
+    body[size] = '\0';
+
+    const char *title = nullptr;
+    const char *tone = nullptr;
+    if (strncmp(body, "{\"k\":\"sts\"", 10) == 0 && strstr(body, "\"type\":\"assistance\"") != nullptr) {
+        title = "Assistance Request";
+        tone = NctnlAlertTones::ASSISTANCE_RECEIVED;
+    }
+
+    if (title == nullptr || mp.from == nodeDB->getNodeNum()) {
+        LOG_DEBUG("NCTNL_DATA text from=0x%08x id=0x%08x suppressed", mp.from, mp.id);
+        return true;
+    }
+
+    char name[sizeof(owner.short_name) * 2];
+    const meshtastic_NodeInfoLite *sender = nodeDB->getMeshNode(mp.from);
+    if (sender && sender->has_user && sender->user.short_name[0] != '\0') {
+        snprintf(name, sizeof(name), "%s", sender->user.short_name);
+    } else if (!extractJsonString(body, "\"name\":\"", name, sizeof(name))) {
+        snprintf(name, sizeof(name), "!%08x", mp.from);
+    }
+    char eventId[24];
+    if (!extractJsonString(body, "\"id\":\"", eventId, sizeof(eventId))) {
+        snprintf(eventId, sizeof(eventId), "-");
+    }
+    LOG_INFO("NCTNL %s from=0x%08x name=%s id=%s", title, mp.from, name, eventId);
+
+    char banner[48];
+    snprintf(banner, sizeof(banner), "%s\n%s", title, name);
+    startRepeatingAlert(banner, tone, false);
     return true;
 }
 

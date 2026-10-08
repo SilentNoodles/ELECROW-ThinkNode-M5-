@@ -9,6 +9,9 @@
 #include "graphics/SharedUIDisplay.h"
 #include "graphics/draw/MessageRenderer.h"
 #include "main.h"
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+#include "modules/NctnlModule.h"
+#endif
 TextMessageModule *textMessageModule;
 
 ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp)
@@ -20,6 +23,12 @@ ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp
     // add packet ID to the rolling list of packets
     textPacketList[textPacketListIndex] = mp.id;
     textPacketListIndex = (textPacketListIndex + 1) % TEXT_PACKET_LIST_SIZE;
+
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+    if (nctnlModule && nctnlModule->handleDataText(mp)) {
+        return ProcessMessage::CONTINUE;
+    }
+#endif
 
     // We only store/display messages destined for us.
     devicestate.rx_text_message = mp;

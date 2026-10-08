@@ -17,6 +17,8 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     bool playAlertTone(const char *tone);
     bool sendStatusDataEvent(const char *type);
     bool sendBatteryDataEvent(const char *type);
+    bool isDataChannelText(const meshtastic_MeshPacket &mp) const;
+    bool handleDataText(const meshtastic_MeshPacket &mp);
 #if defined(ELECROW_ThinkNode_M5) && HAS_SCREEN
     void showSettingsStatusPage() const;
 #endif
@@ -31,9 +33,11 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     void checkBattery();
     void fireBatteryAlert(int level, uint8_t percent);
     void updateAlertToneRepeat();
+    void startRepeatingAlert(const char *banner, const char *tone, bool stopOnExternalPower);
 
     bool alertTonePlaying = false;
     const char *repeatingAlertTone = nullptr;
+    bool repeatStopsOnExternalPower = false;
     uint32_t lastAlertToneMs = 0;
     uint32_t lastBatteryCheckMs = 0;
     bool batteryLevelArmed[3] = {true, true, true};
