@@ -1,10 +1,12 @@
 #include "NctnlModule.h"
 #include "Channels.h"
 #include "MeshService.h"
+#include "NctnlAlertTones.h"
 #include "NctnlDevelopmentConfig.h"
 #include "NodeDB.h"
 #include "PowerStatus.h"
 #include "RTC.h"
+#include "Throttle.h"
 #include "configuration.h"
 #include "modules/ExternalNotificationModule.h"
 #if !MESHTASTIC_EXCLUDE_STATUS
@@ -20,6 +22,23 @@ namespace
 {
 constexpr uint32_t NCTNL_PROTOCOL_VERSION = 1;
 constexpr int32_t ALERT_TONE_STEP_MS = 25;
+constexpr int32_t MONITOR_POLL_MS = 1000;
+constexpr uint32_t BATTERY_CHECK_MS = 10 * 1000;
+
+constexpr int BATTERY_LEVEL_COUNT = 3;
+constexpr uint8_t BATTERY_THRESHOLDS[BATTERY_LEVEL_COUNT] = {NctnlDevelopmentConfig::BATTERY_LOW_PERCENT,
+                                                             NctnlDevelopmentConfig::BATTERY_CRITICAL_PERCENT,
+                                                             NctnlDevelopmentConfig::BATTERY_EMERGENCY_PERCENT};
+constexpr const char *BATTERY_EVENT_TYPES[BATTERY_LEVEL_COUNT] = {"low", "critical", "emergency"};
+constexpr const char *BATTERY_BANNER_TITLES[BATTERY_LEVEL_COUNT] = {"Battery Low", "Battery Critical", "Battery Emergency"};
+constexpr const char *BATTERY_TONES[BATTERY_LEVEL_COUNT] = {NctnlAlertTones::BATTERY_LOW, NctnlAlertTones::BATTERY_CRITICAL,
+                                                            NctnlAlertTones::BATTERY_CRITICAL};
+
+bool hasExternalPower()
+{
+    return powerStatus && (powerStatus->getHasUSB() || powerStatus->getIsCharging());
+}
+
 // Serial log lines are truncated at 160 characters, so long JSON is logged in parts.
 constexpr int DATA_LOG_CHUNK = 100;
 
@@ -161,11 +180,102 @@ int32_t NctnlModule::runOnce()
     if (alertTonePlaying) {
         if (rtttl::isPlaying()) {
             rtttl::play();
-            return ALERT_TONE_STEP_MS;
+        } else {
+            alertTonePlaying = false;
         }
-        alertTonePlaying = false;
     }
-    return INT32_MAX;
+
+    if (isEnabled() && NctnlDevelopmentConfig::BATTERY_ALERTS_ENABLED) {
+        if (!Throttle::isWithinTimespanMs(lastBatteryCheckMs, BATTERY_CHECK_MS)) {
+            lastBatteryCheckMs = millis();
+            checkBattery();
+        }
+        updateAlertToneRepeat();
+    }
+    return alertTonePlaying ? ALERT_TONE_STEP_MS : MONITOR_POLL_MS;
+}
+
+void NctnlModule::checkBattery()
+{
+    if (!powerStatus || !powerStatus->getHasBattery()) {
+        return;
+    }
+
+    const uint8_t percent = powerStatus->getBatteryChargePercent();
+    for (int i = 0; i < BATTERY_LEVEL_COUNT; i++) {
+        if (percent > BATTERY_THRESHOLDS[i] + NctnlDevelopmentConfig::BATTERY_REARM_MARGIN_PERCENT) {
+            batteryLevelArmed[i] = true;
+        }
+    }
+
+    if (hasExternalPower()) {
+        if (!onExternalPower) {
+            onExternalPower = true;
+            externalPowerSinceMs = millis();
+        } else if (batteryAlertSinceAllClear &&
+                   !Throttle::isWithinTimespanMs(externalPowerSinceMs,
+                                                 NctnlDevelopmentConfig::CHARGING_ALL_CLEAR_SECONDS * 1000)) {
+            LOG_INFO("NCTNL battery all-clear: external power for %u s",
+                     static_cast<unsigned>(NctnlDevelopmentConfig::CHARGING_ALL_CLEAR_SECONDS));
+            sendBatteryDataEvent("charging");
+            for (int i = 0; i < BATTERY_LEVEL_COUNT; i++) {
+                batteryLevelArmed[i] = true;
+            }
+            batteryAlertSinceAllClear = false;
+        }
+        return;
+    }
+    onExternalPower = false;
+
+    // Most severe level first so only the highest newly crossed level fires.
+    for (int level = BATTERY_LEVEL_COUNT - 1; level >= 0; level--) {
+        if (batteryLevelArmed[level] && percent <= BATTERY_THRESHOLDS[level]) {
+            for (int i = 0; i <= level; i++) {
+                batteryLevelArmed[i] = false;
+            }
+            fireBatteryAlert(level, percent);
+            break;
+        }
+    }
+}
+
+void NctnlModule::fireBatteryAlert(int level, uint8_t percent)
+{
+    LOG_WARN("NCTNL battery %s at %u%%", BATTERY_EVENT_TYPES[level], percent);
+    batteryAlertSinceAllClear = true;
+    sendBatteryDataEvent(BATTERY_EVENT_TYPES[level]);
+
+#if HAS_SCREEN
+    if (screen) {
+        char banner[32];
+        snprintf(banner, sizeof(banner), "%s\n%u%%", BATTERY_BANNER_TITLES[level], percent);
+        screen->showSimpleBanner(banner, NctnlDevelopmentConfig::ALERT_BANNER_SECONDS * 1000);
+    }
+#endif
+
+    repeatingAlertTone = BATTERY_TONES[level];
+    lastAlertToneMs = millis();
+    playAlertTone(repeatingAlertTone);
+}
+
+void NctnlModule::updateAlertToneRepeat()
+{
+    if (repeatingAlertTone == nullptr) {
+        return;
+    }
+
+    bool bannerShowing = false;
+#if HAS_SCREEN
+    bannerShowing = screen && screen->isOverlayBannerShowing();
+#endif
+    if (!bannerShowing || hasExternalPower()) {
+        repeatingAlertTone = nullptr;
+        return;
+    }
+    if (!Throttle::isWithinTimespanMs(lastAlertToneMs, NctnlDevelopmentConfig::ALERT_REPEAT_SECONDS * 1000)) {
+        lastAlertToneMs = millis();
+        playAlertTone(repeatingAlertTone);
+    }
 }
 
 bool NctnlModule::updateStatus(const char *status) const
@@ -309,9 +419,8 @@ bool NctnlModule::sendDataEvent(bool batteryEvent, const char *type)
         len += snprintf(json + len, sizeof(json) - len, ",\"lat\":%s,\"lon\":%s,\"fix\":%s", lat, lon, fix);
     }
     if (len > 0 && len < static_cast<int>(sizeof(json)) && batteryEvent) {
-        const bool externalPower = powerStatus && (powerStatus->getHasUSB() || powerStatus->getIsCharging());
         len += snprintf(json + len, sizeof(json) - len, ",\"mv\":%d,\"chg\":%s",
-                        powerStatus ? powerStatus->getBatteryVoltageMv() : 0, externalPower ? "true" : "false");
+                        powerStatus ? powerStatus->getBatteryVoltageMv() : 0, hasExternalPower() ? "true" : "false");
     }
     if (len > 0 && len < static_cast<int>(sizeof(json))) {
         len += snprintf(json + len, sizeof(json) - len, "}");

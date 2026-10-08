@@ -28,8 +28,18 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
 
   private:
     bool sendDataEvent(bool batteryEvent, const char *type);
+    void checkBattery();
+    void fireBatteryAlert(int level, uint8_t percent);
+    void updateAlertToneRepeat();
 
     bool alertTonePlaying = false;
+    const char *repeatingAlertTone = nullptr;
+    uint32_t lastAlertToneMs = 0;
+    uint32_t lastBatteryCheckMs = 0;
+    bool batteryLevelArmed[3] = {true, true, true};
+    bool batteryAlertSinceAllClear = false;
+    bool onExternalPower = false;
+    uint32_t externalPowerSinceMs = 0;
 };
 
 extern NctnlModule *nctnlModule;
