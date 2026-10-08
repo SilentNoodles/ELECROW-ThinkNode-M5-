@@ -4,6 +4,7 @@
 #include "NctnlDevelopmentConfig.h"
 #include "NodeDB.h"
 #include "configuration.h"
+#include "modules/ExternalNotificationModule.h"
 #if !MESHTASTIC_EXCLUDE_STATUS
 #include "StatusMessageModule.h"
 #endif
@@ -15,6 +16,7 @@
 namespace
 {
 constexpr uint32_t NCTNL_PROTOCOL_VERSION = 1;
+constexpr int32_t ALERT_TONE_STEP_MS = 25;
 
 std::string trim(const std::string &value)
 {
@@ -51,8 +53,7 @@ const char *eventMessage(meshtastic_NctnlEvent_Type type)
 
 NctnlModule *nctnlModule;
 
-NctnlModule::NctnlModule()
-    : SinglePortModule("nctnl", meshtastic_PortNum_PRIVATE_APP)
+NctnlModule::NctnlModule() : SinglePortModule("nctnl", meshtastic_PortNum_PRIVATE_APP), concurrency::OSThread("Nctnl")
 {
     LOG_INFO("NCTNL module loaded");
 }
@@ -85,6 +86,49 @@ int NctnlModule::findChannelByName(const char *name) const
         }
     }
     return -1;
+}
+
+bool NctnlModule::playAlertTone(const char *tone)
+{
+    if (tone == nullptr || config.device.buzzer_mode == meshtastic_Config_DeviceConfig_BuzzerMode_DISABLED) {
+        return false;
+    }
+    if (externalNotificationModule && externalNotificationModule->getMute()) {
+        LOG_INFO("NCTNL alert tone skipped: muted");
+        return false;
+    }
+    if (rtttl::isPlaying()) {
+        LOG_INFO("NCTNL alert tone skipped: a ringtone is already playing");
+        return false;
+    }
+
+    uint8_t pin = config.device.buzzer_gpio;
+#ifdef PIN_BUZZER
+    if (pin == 0) {
+        pin = PIN_BUZZER;
+    }
+#endif
+    if (pin == 0) {
+        return false;
+    }
+
+    rtttl::begin(pin, tone);
+    alertTonePlaying = true;
+    setIntervalFromNow(0);
+    return true;
+}
+
+int32_t NctnlModule::runOnce()
+{
+    // ExternalNotificationModule only advances rtttl while it is nagging, so drive our own tones here.
+    if (alertTonePlaying) {
+        if (rtttl::isPlaying()) {
+            rtttl::play();
+            return ALERT_TONE_STEP_MS;
+        }
+        alertTonePlaying = false;
+    }
+    return INT32_MAX;
 }
 
 bool NctnlModule::updateStatus(const char *status) const
