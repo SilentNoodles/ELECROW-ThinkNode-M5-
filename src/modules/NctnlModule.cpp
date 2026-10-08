@@ -146,7 +146,12 @@ int NctnlModule::findChannelByName(const char *name) const
 
 bool NctnlModule::playAlertTone(const char *tone)
 {
-    if (tone == nullptr || config.device.buzzer_mode == meshtastic_Config_DeviceConfig_BuzzerMode_DISABLED) {
+    if (tone == nullptr) {
+        return false;
+    }
+    if (config.device.buzzer_mode == meshtastic_Config_DeviceConfig_BuzzerMode_DISABLED ||
+        config.device.buzzer_mode == meshtastic_Config_DeviceConfig_BuzzerMode_SYSTEM_ONLY) {
+        LOG_INFO("NCTNL alert tone skipped: buzzer mode %d", config.device.buzzer_mode);
         return false;
     }
     if (externalNotificationModule && externalNotificationModule->getMute()) {
