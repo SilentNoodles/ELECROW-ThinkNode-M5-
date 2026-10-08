@@ -369,6 +369,10 @@ ProcessMessage ExternalNotificationModule::handleReceived(const meshtastic_MeshP
     if (nctnlModule && nctnlModule->isDataChannelText(mp)) {
         return ProcessMessage::CONTINUE;
     }
+    // NCTNL Quiet skips broadcast notifications only; DMs to us still alert.
+    if (nctnlModule && nctnlModule->isQuiet() && isBroadcast(mp.to)) {
+        return ProcessMessage::CONTINUE;
+    }
 #endif
     // Trigger external notification if enabled and not muted; isSilenced is from temporary mute toggles
     if (moduleConfig.external_notification.enabled && !isSilenced) {
