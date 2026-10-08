@@ -7,10 +7,12 @@ NCTNL nodes broadcast machine-readable events as compact JSON on the channel nam
 - Destination: broadcast (`NODENUM_BROADCAST`)
 - Channel: the enabled channel whose name matches `NCTNL_DATA` (case-insensitive), looked up at every send.
   If no such channel exists the event is not sent; it never falls back to another channel.
-- Port: `PRIVATE_APP`
+- Port: `TEXT_MESSAGE_APP`, so routers using `CORE_PORTNUMS_ONLY` relay it and standard apps show it in the channel chat.
 - Payload: UTF-8 JSON, compact (no spaces), at most `meshtastic_Constants_DATA_PAYLOAD_LEN` (233) bytes.
   An event that would exceed this is not sent; JSON is never truncated.
 - The sender logs the exact JSON to the serial log (split into numbered parts, as log lines are capped at 160 characters).
+- Receivers identify NCTNL data by the channel name `NCTNL_DATA` plus a message body starting with `{"k":`.
+- Devices should mute the `NCTNL_DATA` channel so these events do not trigger message notifications.
 
 ## Fields
 

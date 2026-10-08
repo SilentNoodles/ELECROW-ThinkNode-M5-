@@ -412,6 +412,8 @@ bool NctnlModule::sendDataEvent(bool batteryEvent, const char *type)
     }
 
     meshtastic_MeshPacket *packet = allocDataPacket();
+    // Text port so CORE_PORTNUMS_ONLY routers relay it and apps show it in the channel chat.
+    packet->decoded.portnum = meshtastic_PortNum_TEXT_MESSAGE_APP;
     const NodeNum node = nodeDB->getNodeNum();
 
     char name[sizeof(owner.short_name) * 2];
