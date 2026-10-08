@@ -453,10 +453,10 @@ void NctnlModule::showSettingsStatusPage() const
     }
 
     static char status[280];
-    snprintf(status, sizeof(status), "NCTNL Settings\nNCTNL:%s QMsg:%s\nStatus:%s Batt:%s\nDATA:%s COMMS:%s\nCTRL:%s Read-only",
+    snprintf(status, sizeof(status), "NCTNL Settings\nNCTNL:%s QMsg:%s\nStatus:%s Batt:%s\nDATA:%s COMMS:%s\nCTRL:%s Quiet:%s",
              isEnabled() ? "On" : "Off", isQuickMenuEnabled() ? "On" : "Off", areAutomaticStatusUpdatesEnabled() ? "On" : "Off",
              isEnabled() && NctnlDevelopmentConfig::BATTERY_ALERTS_ENABLED ? "On" : "Off", channelTexts[0], channelTexts[1],
-             channelTexts[2]);
+             channelTexts[2], isQuiet() ? "On" : "Off");
 
     static const char *options[] = {"Back"};
     graphics::BannerOverlayOptions banner;
