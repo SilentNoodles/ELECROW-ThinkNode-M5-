@@ -38,6 +38,8 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     void startRepeatingAlert(const char *banner, const char *tone, bool stopOnExternalPower);
     void setStatusState(const char *status);
     void announceStartupOnline();
+    void setBatteryOffline();
+    void restoreStatusAfterBattery();
 
     bool alertTonePlaying = false;
     const char *repeatingAlertTone = nullptr;
@@ -53,6 +55,9 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     char currentStatus[24] = "";
     uint32_t startupMs = 0;
     bool startupOnlineDone = false;
+    bool offlineSetByBattery = false;
+    char preBatteryStatus[24] = "";
+    bool preBatteryQuiet = false;
 };
 
 extern NctnlModule *nctnlModule;

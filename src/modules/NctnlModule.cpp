@@ -250,6 +250,9 @@ void NctnlModule::checkBattery()
             LOG_INFO("NCTNL battery all-clear: external power for %u s",
                      static_cast<unsigned>(NctnlDevelopmentConfig::CHARGING_ALL_CLEAR_SECONDS));
             sendBatteryDataEvent("charging");
+            if (offlineSetByBattery) {
+                restoreStatusAfterBattery();
+            }
             for (int i = 0; i < BATTERY_LEVEL_COUNT; i++) {
                 batteryLevelArmed[i] = true;
             }
@@ -280,6 +283,41 @@ void NctnlModule::fireBatteryAlert(int level, uint8_t percent)
     char banner[32];
     snprintf(banner, sizeof(banner), "%s\n%u%%", BATTERY_BANNER_TITLES[level], percent);
     startRepeatingAlert(banner, BATTERY_TONES[level], true);
+
+    if (level == BATTERY_LEVEL_COUNT - 1) {
+        setBatteryOffline();
+    }
+}
+
+void NctnlModule::setBatteryOffline()
+{
+    if (!offlineSetByBattery) {
+        snprintf(preBatteryStatus, sizeof(preBatteryStatus), "%s", currentStatus);
+        preBatteryQuiet = quiet;
+    }
+    offlineSetByBattery = true;
+    LOG_INFO("NCTNL battery emergency: setting status Offline (was %s)", preBatteryStatus[0] ? preBatteryStatus : "unknown");
+    updateStatus("Offline");
+    setStatusState("Offline");
+    sendStatusDataEvent("going_offline");
+}
+
+void NctnlModule::restoreStatusAfterBattery()
+{
+    offlineSetByBattery = false;
+    if (preBatteryStatus[0] == '\0') {
+        LOG_INFO("NCTNL battery all-clear: no pre-battery status to restore");
+        return;
+    }
+    LOG_INFO("NCTNL battery all-clear: restoring status %s", preBatteryStatus);
+    updateStatus(preBatteryStatus);
+    setStatusState(preBatteryStatus);
+    quiet = preBatteryQuiet;
+    if (strcmp(preBatteryStatus, "Online") == 0) {
+        sendStatusDataEvent("online");
+    } else if (strcmp(preBatteryStatus, "Standby") == 0) {
+        sendStatusDataEvent("standby");
+    }
 }
 
 void NctnlModule::startRepeatingAlert(const char *banner, const char *tone, bool stopOnExternalPower)
@@ -366,6 +404,7 @@ bool NctnlModule::isQuiet() const
 
 void NctnlModule::handleStatusAction(const char *status)
 {
+    offlineSetByBattery = false;
     setStatusState(status);
 }
 
@@ -385,6 +424,13 @@ void NctnlModule::setStatusState(const char *status)
 
 void NctnlModule::announceStartupOnline()
 {
+    // Battery Emergency already forced Offline; restore to Online on the charging all-clear instead.
+    if (offlineSetByBattery) {
+        snprintf(preBatteryStatus, sizeof(preBatteryStatus), "Online");
+        preBatteryQuiet = false;
+        LOG_INFO("NCTNL start-up: Offline set by battery, Online deferred until charging all-clear");
+        return;
+    }
     LOG_INFO("NCTNL start-up: setting status Online");
     updateStatus("Online");
     setStatusState("Online");
