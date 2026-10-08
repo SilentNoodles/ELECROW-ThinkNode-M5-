@@ -1,4 +1,5 @@
 #include "NctnlModule.h"
+#include "Channels.h"
 #include "MeshService.h"
 #include "NctnlDevelopmentConfig.h"
 #include "NodeDB.h"
@@ -69,6 +70,21 @@ bool NctnlModule::isQuickMenuEnabled() const
 bool NctnlModule::areAutomaticStatusUpdatesEnabled() const
 {
     return isEnabled() && NctnlDevelopmentConfig::AUTOMATIC_STATUS_UPDATES_ENABLED;
+}
+
+// Channels::getByName() falls back to the primary channel, which must never receive NCTNL traffic.
+int NctnlModule::findChannelByName(const char *name) const
+{
+    if (name == nullptr || name[0] == '\0') {
+        return -1;
+    }
+    for (ChannelIndex i = 0; i < channels.getNumChannels(); i++) {
+        const meshtastic_Channel &ch = channels.getByIndex(i);
+        if (ch.role != meshtastic_Channel_Role_DISABLED && strcasecmp(ch.settings.name, name) == 0) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 bool NctnlModule::updateStatus(const char *status) const

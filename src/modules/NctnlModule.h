@@ -12,6 +12,7 @@ class NctnlModule : public SinglePortModule
     bool areAutomaticStatusUpdatesEnabled() const;
     bool updateStatus(const char *status) const;
     bool sendEvent(meshtastic_NctnlEvent_Type type, NodeNum dest, ChannelIndex channel);
+    int findChannelByName(const char *name) const;
 #if defined(ELECROW_ThinkNode_M5) && HAS_SCREEN
     void showSettingsStatusPage() const;
 #endif
