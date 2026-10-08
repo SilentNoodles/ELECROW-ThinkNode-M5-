@@ -23,6 +23,9 @@
 #include "main.h"
 #include "mesh/generated/meshtastic/rtttl.pb.h"
 #include <Arduino.h>
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+#include "modules/NctnlModule.h"
+#endif
 
 #if defined(HAS_RGB_LED)
 #include "AmbientLightingThread.h"
@@ -362,6 +365,11 @@ ExternalNotificationModule::ExternalNotificationModule()
 
 ProcessMessage ExternalNotificationModule::handleReceived(const meshtastic_MeshPacket &mp)
 {
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+    if (nctnlModule && nctnlModule->isDataChannelText(mp)) {
+        return ProcessMessage::CONTINUE;
+    }
+#endif
     // Trigger external notification if enabled and not muted; isSilenced is from temporary mute toggles
     if (moduleConfig.external_notification.enabled && !isSilenced) {
         if (!isFromUs(&mp)) {
