@@ -24,6 +24,8 @@ constexpr uint32_t NCTNL_PROTOCOL_VERSION = 1;
 constexpr int32_t ALERT_TONE_STEP_MS = 25;
 constexpr int32_t MONITOR_POLL_MS = 1000;
 constexpr uint32_t BATTERY_CHECK_MS = 10 * 1000;
+// Lets channels, time and the radio come up before announcing Online.
+constexpr uint32_t STARTUP_ONLINE_DELAY_MS = 45 * 1000;
 
 constexpr int BATTERY_LEVEL_COUNT = 3;
 constexpr uint8_t BATTERY_THRESHOLDS[BATTERY_LEVEL_COUNT] = {NctnlDevelopmentConfig::BATTERY_LOW_PERCENT,
@@ -129,6 +131,7 @@ NctnlModule *nctnlModule;
 
 NctnlModule::NctnlModule() : SinglePortModule("nctnl", meshtastic_PortNum_PRIVATE_APP), concurrency::OSThread("Nctnl")
 {
+    startupMs = millis();
     LOG_INFO("NCTNL module loaded");
 }
 
@@ -206,6 +209,11 @@ int32_t NctnlModule::runOnce()
         } else {
             alertTonePlaying = false;
         }
+    }
+
+    if (isEnabled() && !startupOnlineDone && !Throttle::isWithinTimespanMs(startupMs, STARTUP_ONLINE_DELAY_MS)) {
+        startupOnlineDone = true;
+        announceStartupOnline();
     }
 
     if (isEnabled() && NctnlDevelopmentConfig::BATTERY_ALERTS_ENABLED &&
@@ -373,6 +381,14 @@ void NctnlModule::setStatusState(const char *status)
         quiet = false;
     }
     LOG_INFO("NCTNL status %s, Quiet %s", currentStatus, quiet ? "on" : "off");
+}
+
+void NctnlModule::announceStartupOnline()
+{
+    LOG_INFO("NCTNL start-up: setting status Online");
+    updateStatus("Online");
+    setStatusState("Online");
+    sendStatusDataEvent("online");
 }
 
 #if defined(ELECROW_ThinkNode_M5) && HAS_SCREEN

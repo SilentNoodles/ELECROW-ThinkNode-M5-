@@ -37,6 +37,7 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     void updateAlertToneRepeat();
     void startRepeatingAlert(const char *banner, const char *tone, bool stopOnExternalPower);
     void setStatusState(const char *status);
+    void announceStartupOnline();
 
     bool alertTonePlaying = false;
     const char *repeatingAlertTone = nullptr;
@@ -50,6 +51,8 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     // RAM-only; never persisted.
     bool quiet = false;
     char currentStatus[24] = "";
+    uint32_t startupMs = 0;
+    bool startupOnlineDone = false;
 };
 
 extern NctnlModule *nctnlModule;
