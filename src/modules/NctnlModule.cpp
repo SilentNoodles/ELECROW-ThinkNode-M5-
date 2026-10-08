@@ -3,12 +3,15 @@
 #include "MeshService.h"
 #include "NctnlDevelopmentConfig.h"
 #include "NodeDB.h"
+#include "PowerStatus.h"
+#include "RTC.h"
 #include "configuration.h"
 #include "modules/ExternalNotificationModule.h"
 #if !MESHTASTIC_EXCLUDE_STATUS
 #include "StatusMessageModule.h"
 #endif
 #include <string>
+#include <time.h>
 #if HAS_SCREEN
 #include "graphics/Screen.h"
 #endif
@@ -17,6 +20,40 @@ namespace
 {
 constexpr uint32_t NCTNL_PROTOCOL_VERSION = 1;
 constexpr int32_t ALERT_TONE_STEP_MS = 25;
+// Serial log lines are truncated at 160 characters, so long JSON is logged in parts.
+constexpr int DATA_LOG_CHUNK = 100;
+
+void formatIsoTimeOrNull(uint32_t epoch, char *out, size_t size)
+{
+    if (epoch == 0) {
+        snprintf(out, size, "null");
+        return;
+    }
+    const time_t t = epoch;
+    struct tm tm;
+    gmtime_r(&t, &tm);
+    snprintf(out, size, "\"%04d-%02d-%02dT%02d:%02d:%02dZ\"", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min,
+             tm.tm_sec);
+}
+
+void formatCoordinate(int32_t value, char *out, size_t size)
+{
+    const uint32_t magnitude = value < 0 ? 0u - static_cast<uint32_t>(value) : static_cast<uint32_t>(value);
+    snprintf(out, size, "%s%lu.%07lu", value < 0 ? "-" : "", static_cast<unsigned long>(magnitude / 10000000UL),
+             static_cast<unsigned long>(magnitude % 10000000UL));
+}
+
+void escapeJson(const char *in, char *out, size_t size)
+{
+    size_t o = 0;
+    for (; *in != '\0' && o + 2 < size; in++) {
+        if (*in == '"' || *in == '\\') {
+            out[o++] = '\\';
+        }
+        out[o++] = *in;
+    }
+    out[o] = '\0';
+}
 
 std::string trim(const std::string &value)
 {
@@ -226,30 +263,89 @@ bool NctnlModule::sendEvent(meshtastic_NctnlEvent_Type type, NodeNum dest, Chann
     return true;
 }
 
+bool NctnlModule::sendStatusDataEvent(const char *type)
+{
+    return sendDataEvent(false, type);
+}
+
+bool NctnlModule::sendBatteryDataEvent(const char *type)
+{
+    return sendDataEvent(true, type);
+}
+
+bool NctnlModule::sendDataEvent(bool batteryEvent, const char *type)
+{
+    if (!isEnabled() || !NctnlDevelopmentConfig::DATA_EVENTS_ENABLED || type == nullptr) {
+        return false;
+    }
+
+    const int channel = findChannelByName(NctnlDevelopmentConfig::DATA_CHANNEL_NAME);
+    if (channel < 0) {
+        LOG_WARN("NCTNL %s event not sent: channel %s not found", type, NctnlDevelopmentConfig::DATA_CHANNEL_NAME);
+        return false;
+    }
+
+    meshtastic_MeshPacket *packet = allocDataPacket();
+    const NodeNum node = nodeDB->getNodeNum();
+
+    char name[sizeof(owner.short_name) * 2];
+    escapeJson(owner.short_name, name, sizeof(name));
+    char now[24];
+    formatIsoTimeOrNull(getValidTime(RTCQualityDevice), now, sizeof(now));
+    const unsigned battery = powerStatus ? powerStatus->getBatteryChargePercent() : 0;
+
+    char json[meshtastic_Constants_DATA_PAYLOAD_LEN * 2];
+    int len =
+        snprintf(json, sizeof(json),
+                 "{\"k\":\"%s\",\"v\":1,\"type\":\"%s\",\"id\":\"%08x-%08x\",\"node\":\"!%08x\",\"name\":\"%s\",\"time\":%s,"
+                 "\"bat\":%u",
+                 batteryEvent ? "bat" : "sts", type, node, packet->id, node, name, now, battery);
+
+    if (len > 0 && len < static_cast<int>(sizeof(json)) && (localPosition.latitude_i != 0 || localPosition.longitude_i != 0)) {
+        char lat[16], lon[16], fix[24];
+        formatCoordinate(localPosition.latitude_i, lat, sizeof(lat));
+        formatCoordinate(localPosition.longitude_i, lon, sizeof(lon));
+        formatIsoTimeOrNull(localPosition.time, fix, sizeof(fix));
+        len += snprintf(json + len, sizeof(json) - len, ",\"lat\":%s,\"lon\":%s,\"fix\":%s", lat, lon, fix);
+    }
+    if (len > 0 && len < static_cast<int>(sizeof(json)) && batteryEvent) {
+        const bool externalPower = powerStatus && (powerStatus->getHasUSB() || powerStatus->getIsCharging());
+        len += snprintf(json + len, sizeof(json) - len, ",\"mv\":%d,\"chg\":%s",
+                        powerStatus ? powerStatus->getBatteryVoltageMv() : 0, externalPower ? "true" : "false");
+    }
+    if (len > 0 && len < static_cast<int>(sizeof(json))) {
+        len += snprintf(json + len, sizeof(json) - len, "}");
+    }
+
+    if (len <= 0 || len >= static_cast<int>(sizeof(json)) || len > meshtastic_Constants_DATA_PAYLOAD_LEN) {
+        LOG_ERROR("NCTNL %s event not sent: JSON exceeds %d bytes", type, meshtastic_Constants_DATA_PAYLOAD_LEN);
+        packetPool.release(packet);
+        return false;
+    }
+
+    memcpy(packet->decoded.payload.bytes, json, len);
+    packet->decoded.payload.size = len;
+    packet->to = NODENUM_BROADCAST;
+    packet->channel = channel;
+    packet->want_ack = true;
+
+    LOG_INFO("NCTNL_DATA sent on channel %d (%d bytes)", channel, len);
+    const int parts = (len + DATA_LOG_CHUNK - 1) / DATA_LOG_CHUNK;
+    for (int i = 0; i < parts; i++) {
+        const int partLen = (len - i * DATA_LOG_CHUNK) < DATA_LOG_CHUNK ? (len - i * DATA_LOG_CHUNK) : DATA_LOG_CHUNK;
+        LOG_INFO("NCTNL_DATA %d/%d: %.*s", i + 1, parts, partLen, json + i * DATA_LOG_CHUNK);
+    }
+    service->sendToMesh(packet, RX_SRC_LOCAL, true);
+    return true;
+}
+
 ProcessMessage NctnlModule::handleReceived(const meshtastic_MeshPacket &mp)
 {
     if (!isEnabled()) {
         return ProcessMessage::CONTINUE;
     }
 
-    meshtastic_NctnlEvent event = meshtastic_NctnlEvent_init_zero;
-    if (!pb_decode_from_bytes(mp.decoded.payload.bytes, mp.decoded.payload.size, meshtastic_NctnlEvent_fields, &event) ||
-        event.protocol_version != NCTNL_PROTOCOL_VERSION || event.event_id == 0) {
-        LOG_WARN("Ignoring invalid NCTNL event");
-        return ProcessMessage::CONTINUE;
-    }
-
-    const char *message = eventMessage(event.type);
-    if (message == nullptr) {
-        LOG_WARN("Ignoring unsupported NCTNL event type %d", event.type);
-        return ProcessMessage::CONTINUE;
-    }
-
-    LOG_INFO("Received NCTNL event type=%d id=0x%08x from=0x%08x", event.type, event.event_id, mp.from);
-#if HAS_SCREEN
-    if (screen) {
-        screen->showSimpleBanner(message, 10000);
-    }
-#endif
+    LOG_INFO("Received NCTNL packet from=0x%08x id=0x%08x channel=%u size=%u", mp.from, mp.id, mp.channel,
+             mp.decoded.payload.size);
     return ProcessMessage::CONTINUE;
 }

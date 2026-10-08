@@ -15,6 +15,8 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     bool sendEvent(meshtastic_NctnlEvent_Type type, NodeNum dest, ChannelIndex channel);
     int findChannelByName(const char *name) const;
     bool playAlertTone(const char *tone);
+    bool sendStatusDataEvent(const char *type);
+    bool sendBatteryDataEvent(const char *type);
 #if defined(ELECROW_ThinkNode_M5) && HAS_SCREEN
     void showSettingsStatusPage() const;
 #endif
@@ -25,6 +27,8 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     int32_t runOnce() override;
 
   private:
+    bool sendDataEvent(bool batteryEvent, const char *type);
+
     bool alertTonePlaying = false;
 };
 
