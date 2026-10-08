@@ -91,7 +91,7 @@ All Clear
 [Exit]
 ```
 
-`[Select Destination]` uses the existing Meshtastic destination system. Configured channels and known individual nodes are presented through the same destination picker.
+`[Select Destination]` uses the existing Meshtastic destination system. Configured channels and known individual nodes are presented through the same destination picker. The `NCTNL_DATA` and `NCTNL_CTRL` channels are hidden from the picker; `NCTNL_COMMS` and all other channels still appear.
 
 The five NCTNL actions are deliberately sent as **normal Meshtastic text messages**. They can therefore be received and read by standard compatible Meshtastic clients without requiring NCTNL-specific client software.
 
@@ -113,7 +113,7 @@ The five NCTNL actions are deliberately sent as **normal Meshtastic text message
 `[Send Coordinates]` sends the node's current GPS position as an ordinary Meshtastic text message to the selected destination.
 
 ```text
-Coordinates: 52.123456, -2.123456
+Coordinates: 12.345678, -12.345678
 ```
 
 A current valid GPS fix is required. If no current fix is available:
@@ -234,10 +234,7 @@ For the current development firmware these effective values are centrally enable
 
 A read-only **NCTNL Settings** entry currently exists in the ThinkNode M5 Home Action menu.
 
-> [!CAUTION]
-> In the current reference build, selecting NCTNL Settings can cause the device to abort and reboot. The fault has been traced to the settings banner callback path and is awaiting a firmware fix.
-
-The current Settings page should therefore not be relied upon.
+The page is read-only. The earlier crash when opening it has been fixed (see [Verified Fixes](#verified-fixes)).
 
 ---
 
@@ -266,7 +263,7 @@ This is an **experimental protocol foundation**, not the final NCTNL wire protoc
 
 The five current user-facing Quick Message actions use ordinary Meshtastic text messages rather than depending on structured NCTNL packets.
 
-A permanent NCTNL PortNum and the wider structured protocol are intentionally deferred until the Base Station and protocol architecture are ready.
+Machine-readable NCTNL_DATA JSON v1 events are sent as `TEXT_MESSAGE_APP` on the `NCTNL_DATA` channel (see [`docs/nctnl-data-spec.md`](docs/nctnl-data-spec.md)). A permanent NCTNL PortNum is not planned for now, because `TEXT_MESSAGE_APP` is relayed by all routers.
 
 ---
 
@@ -301,21 +298,26 @@ A successful compile alone is not considered physical verification.
 
 ## Known Issues
 
-### NCTNL Settings Reboot
-
-Selecting `NCTNL Settings` from the Home Action menu currently causes an abort/reboot.
-
-The captured backtrace identifies an empty `std::function` invocation in the overlay-banner callback path. A minimal fix is pending.
-
 ### Battery Telemetry Can Report 101%
 
-While charging, the battery percentage shown locally on the ThinkNode M5 correctly tops out at 100%, but telemetry presented to a Meshtastic client can report **101%**.
+Telemetry presented to a Meshtastic client can report **101%** while the ThinkNode M5 is on USB power or charging.
 
-This affects battery graphs and derived statistics. The battery value path through Meshtastic `DeviceMetrics` telemetry is due to be investigated.
+This is upstream Meshtastic behaviour: `DeviceTelemetry` deliberately reports 101 while on external power. The voltage field is always the real measured value. It is not an NCTNL bug.
 
-### Boot-Time Invalid GPIO Message
+### Battery Percentage Curve Is Inaccurate
 
-Development logs have also shown an `Invalid pin selected` message during boot. This is tracked separately and is not currently known to prevent normal LoRa, Bluetooth or NCTNL operation.
+The variant's `OCV_ARRAY` still holds the upstream values, so the battery percentage reads low. For example, it has shown 26% with about 70 minutes of runtime left. A curve fix is planned once more discharge data has been collected.
+
+### Battery Alerts Not Yet Verified on a Real Discharge
+
+Battery alerts, the battery Emergency → Offline change and the charging restore are not yet verified on a real discharge.
+
+---
+
+## Verified Fixes
+
+- **NCTNL Settings reboot** (PR #28): opening `NCTNL Settings` from the Home Action menu caused an abort/reboot from an empty `std::function` in the banner callback path. The page is now queued through `menuQueue` and uses a no-op banner callback. Verified on the device.
+- **Boot-time invalid GPIO message**: the `Invalid pin selected` boot message was fixed by removing `PIN_POWER_EN -1` from the variant. Verified on the device.
 
 ---
 
@@ -330,19 +332,25 @@ Development logs have also shown an `Invalid pin selected` message during boot. 
 | Manual Send Coordinates | Complete and physically verified |
 | Automatic NCTNL status updates | Complete and physically verified |
 | NCTNL branding | Complete |
-| Structured event foundation | Experimental foundation present |
-| NCTNL Settings crash | Fix pending |
-| Battery telemetry investigation | Planned |
+| Structured event foundation / NCTNL_DATA JSON v1 events on `TEXT_MESSAGE_APP` | Complete and physically verified |
+| NCTNL Settings crash | Complete and physically verified |
+| Battery telemetry investigation | Complete (101% explained, curve fix planned) |
 | Presence / heartbeat | Planned |
-| Battery state and NCTNL battery alerts | Planned |
-| Shared RTTTL alert framework | Planned |
-| NCTNL audio alerts | Planned |
+| Battery state and NCTNL battery alerts | Complete, real-discharge test pending |
+| Shared RTTTL alert framework | Complete (non-blocking; only Warning, BatteryLow and siren are wired in) |
+| NCTNL audio alerts | Partial (battery and assistance-received done; others planned) |
+| NCTNL Quiet (Standby/Offline) | Complete and physically verified |
+| Quick Chat hides NCTNL_DATA / NCTNL_CTRL | Complete (Stage 4.1, pending device test) |
 | Location and privacy controls | Planned |
 | Local SOS activation and UI | Planned |
 | SOS transmission and cancellation | Planned after protocol/Base Station design |
-| Permanent NCTNL PortNum | Deferred until protocol design |
+| Permanent NCTNL PortNum | Not planned for now. Data events use `TEXT_MESSAGE_APP` so all routers relay them |
 | Base Station integration | In development separately |
 | Hardening and regression testing | Future |
+| Last-known GPS persistence across reboot | Planned |
+| Battery curve (OCV) correction | Planned |
+| Receive-side alerts for SOS | Planned |
+| FCU retransmit of unacknowledged data events (handled on the FCU, not the node) | Planned |
 
 Planned features may change before implementation.
 

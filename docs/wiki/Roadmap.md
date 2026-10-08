@@ -2,21 +2,38 @@
 
 This page describes planned work. Items here are not current functionality unless separately marked as implemented.
 
+## Current status
+
+| Area | Status |
+| --- | --- |
+| NCTNL Settings crash | Complete and physically verified |
+| Structured event foundation / NCTNL_DATA JSON v1 events on `TEXT_MESSAGE_APP` | Complete and physically verified |
+| Battery state and NCTNL battery alerts | Complete, real-discharge test pending |
+| Shared RTTTL alert framework | Complete (non-blocking; only Warning, BatteryLow and siren are wired in) |
+| NCTNL audio alerts | Partial (battery and assistance-received done; others planned) |
+| NCTNL Quiet (Standby/Offline) | Complete and physically verified |
+| Quick Chat hides NCTNL_DATA / NCTNL_CTRL | Complete (Stage 4.1, pending device test) |
+| Battery telemetry investigation | Complete (101% explained, curve fix planned) |
+| Permanent NCTNL PortNum | Not planned for now. Data events use `TEXT_MESSAGE_APP` so all routers relay them |
+| Last-known GPS persistence across reboot | Planned |
+| Battery curve (OCV) correction | Planned |
+| Receive-side alerts for SOS | Planned |
+| FCU retransmit of unacknowledged data events (handled on the FCU, not the node) | Planned |
+
 ## Communications foundation
 
-- formal NCTNL structured event protocol;
-- permanent NCTNL PortNum;
 - common NCTNL communication layer;
 - presence / heartbeat;
-- battery monitoring and events;
+- last-known GPS persistence across reboot;
+- battery curve (OCV) correction;
 - NCTNL Ping Response; and
 - airtime optimisation.
 
 ## Audio and alerts
 
-- shared RTTTL/audio framework;
-- audio configuration; and
-- received-event alert behaviour.
+- audio configuration;
+- the remaining NCTNL audio alerts; and
+- receive-side alerts for SOS.
 
 Exact authoritative RTTTL strings should be documented only from the agreed catalogue, not recreated from memory.
 

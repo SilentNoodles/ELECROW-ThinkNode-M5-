@@ -28,6 +28,7 @@
 #include "modules/AdminModule.h"
 #include "modules/ExternalNotificationModule.h" // for buzzer control
 #if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+#include "modules/NctnlDevelopmentConfig.h"
 #include "modules/NctnlModule.h"
 #endif
 extern MessageStore messageStore;
@@ -321,6 +322,11 @@ void CannedMessageModule::updateDestinationSelectionList()
     seenChannels.reserve(channels.getNumChannels());
     for (uint8_t i = 0; i < channels.getNumChannels(); ++i) {
         String name = channels.getName(i);
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+        if (NctnlDevelopmentConfig::NCTNL_ENABLED && (strcasecmp(name.c_str(), NctnlDevelopmentConfig::DATA_CHANNEL_NAME) == 0 ||
+                                                      strcasecmp(name.c_str(), NctnlDevelopmentConfig::CTRL_CHANNEL_NAME) == 0))
+            continue;
+#endif
         if (name.length() > 0 && std::find(seenChannels.begin(), seenChannels.end(), name) == seenChannels.end()) {
             this->activeChannelIndices.push_back(i);
             seenChannels.push_back(name);
