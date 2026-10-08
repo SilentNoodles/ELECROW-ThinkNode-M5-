@@ -34,6 +34,20 @@ Example:
 | Need Assistance | Needs Assistance |
 | All Clear | Online |
 
+## Automatic changes outside Quick Messages
+
+| Trigger | Status |
+| --- | --- |
+| Every start-up (after about 45 s) | Online |
+| Battery Emergency | Offline |
+| Charging all-clear after a battery-set Offline | The status before the battery Emergency |
+
+A manual status action after a battery Emergency cancels the charging restore.
+
+## NCTNL Quiet
+
+NCTNL Quiet is on while the status is Offline or Standby and off when it is Online. While on, broadcast messages do not trigger the buzzer, LED or vibration; direct messages still alert and NCTNL alert tones are unaffected. Quiet is held in RAM only and is separate from Meshtastic's Mute, which is unchanged.
+
 ## Fail-safe parsing
 
 Automatic modification only takes place when the existing status matches the expected four-part NCTNL format.

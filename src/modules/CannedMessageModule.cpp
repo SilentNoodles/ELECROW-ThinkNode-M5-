@@ -799,6 +799,7 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
             sendText(dest, channel, message, true);
             nctnlModule->updateStatus(status);
 #if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+            nctnlModule->handleStatusAction(status);
             nctnlModule->sendStatusDataEvent(dataType);
 #endif
             currentMessageIndex = -1;

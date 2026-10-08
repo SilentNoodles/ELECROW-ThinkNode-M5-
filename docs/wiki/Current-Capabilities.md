@@ -16,6 +16,9 @@ The current field-node firmware includes:
 - Send Coordinates;
 - automatic NCTNL Status Message updates;
 - live local status refresh after an automatic status update;
+- Online status at every start-up;
+- Offline status on battery Emergency, restored on the charging all-clear;
+- NCTNL Quiet: broadcast message notifications are skipped while the status is Offline or Standby (direct messages still alert; Meshtastic Mute is unchanged);
 - correct post-send UI cleanup for predefined Quick Messages and Send Coordinates;
 - NCTNL branding; and
 - central development configuration for currently hard-coded NCTNL feature enablement.

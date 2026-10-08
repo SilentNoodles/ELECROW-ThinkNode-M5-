@@ -49,7 +49,11 @@ Types: `low`, `critical`, `emergency`, `charging`
 
 Adds nothing.
 
-Types: `going_offline`, `standby`, `check_in`, `assistance`, `all_clear`
+Types: `online`, `going_offline`, `standby`, `check_in`, `assistance`, `all_clear`
+
+- `online` is sent about 45 s after every start-up, and when the charging all-clear restores an `Online` status.
+- `going_offline` is sent by the Going Offline action and when the battery reaches Emergency.
+- `standby` is also sent when the charging all-clear restores a `Standby` status.
 
 ## Examples
 
