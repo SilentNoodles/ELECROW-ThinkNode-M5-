@@ -164,6 +164,16 @@ If the existing status does not match the expected format, it is left untouched.
 
 A status-update failure does not prevent the selected Quick Message from being transmitted.
 
+### Start-up, battery and NCTNL Quiet
+
+- **Online at start-up:** about 45 s after every start-up (including reboots and crashes) the status is set to `Online` and an NCTNL_DATA `sts` `online` event is sent.
+- **Battery Emergency:** the status is set to `Offline` and an `sts` `going_offline` event is sent, in addition to the existing battery alert. The previous status is remembered in RAM.
+- **Charging all-clear:** if the status is still the battery-set `Offline`, the remembered status is restored (`sts` `online` or `standby` is sent to match). Any manual status action cancels the restore.
+
+**NCTNL Quiet** is a status-driven do-not-disturb. It is on while the NCTNL status is `Offline` or `Standby` and off when it is `Online`. While Quiet is on, broadcast messages on any channel do not trigger the buzzer, LED or vibration; direct messages to the node still alert. NCTNL alert tones (battery, assistance) are not affected.
+
+Quiet is held in RAM only. It is separate from Meshtastic's own Mute, which is unchanged and still silences everything, NCTNL alert tones included. The NCTNL Settings page shows the current Quiet state.
+
 ---
 
 ## ThinkNode M5 Interface
