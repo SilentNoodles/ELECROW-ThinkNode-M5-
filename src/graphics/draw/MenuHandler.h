@@ -55,7 +55,10 @@ class menuHandler
         NodeNameLengthMenu,
         FrameToggles,
         DisplayUnits,
-        MessageBubblesMenu
+        MessageBubblesMenu,
+#if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+        NctnlSettingsPage,
+#endif
     };
     static screenMenus menuQueue;
     static uint32_t pickedNodeNum; // node selected by NodePicker for ManageNodeMenu
