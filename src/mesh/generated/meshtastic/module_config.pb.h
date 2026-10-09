@@ -455,6 +455,8 @@ typedef struct _meshtastic_ModuleConfig_NctnlConfig {
     bool enabled;
     /* Show NCTNL actions in the quick menu. */
     bool quick_menu_enabled;
+    /* Disable the FCU serial mirror. Inverted so an unset value leaves the mirror on. */
+    bool fcu_integration_disabled;
 } meshtastic_ModuleConfig_NctnlConfig;
 
 /* TAK team/role configuration */
@@ -608,7 +610,7 @@ extern "C" {
 #define meshtastic_ModuleConfig_CannedMessageConfig_init_default {0, 0, 0, 0, _meshtastic_ModuleConfig_CannedMessageConfig_InputEventChar_MIN, _meshtastic_ModuleConfig_CannedMessageConfig_InputEventChar_MIN, _meshtastic_ModuleConfig_CannedMessageConfig_InputEventChar_MIN, 0, 0, "", 0}
 #define meshtastic_ModuleConfig_AmbientLightingConfig_init_default {0, 0, 0, 0, 0}
 #define meshtastic_ModuleConfig_StatusMessageConfig_init_default {""}
-#define meshtastic_ModuleConfig_NctnlConfig_init_default {0, 0}
+#define meshtastic_ModuleConfig_NctnlConfig_init_default {0, 0, 0}
 #define meshtastic_ModuleConfig_TAKConfig_init_default {_meshtastic_Team_MIN, _meshtastic_MemberRole_MIN}
 #define meshtastic_RemoteHardwarePin_init_default {0, "", _meshtastic_RemoteHardwarePinType_MIN}
 #define meshtastic_ModuleConfig_init_zero        {0, {meshtastic_ModuleConfig_MQTTConfig_init_zero}}
@@ -628,7 +630,7 @@ extern "C" {
 #define meshtastic_ModuleConfig_CannedMessageConfig_init_zero {0, 0, 0, 0, _meshtastic_ModuleConfig_CannedMessageConfig_InputEventChar_MIN, _meshtastic_ModuleConfig_CannedMessageConfig_InputEventChar_MIN, _meshtastic_ModuleConfig_CannedMessageConfig_InputEventChar_MIN, 0, 0, "", 0}
 #define meshtastic_ModuleConfig_AmbientLightingConfig_init_zero {0, 0, 0, 0, 0}
 #define meshtastic_ModuleConfig_StatusMessageConfig_init_zero {""}
-#define meshtastic_ModuleConfig_NctnlConfig_init_zero {0, 0}
+#define meshtastic_ModuleConfig_NctnlConfig_init_zero {0, 0, 0}
 #define meshtastic_ModuleConfig_TAKConfig_init_zero {_meshtastic_Team_MIN, _meshtastic_MemberRole_MIN}
 #define meshtastic_RemoteHardwarePin_init_zero   {0, "", _meshtastic_RemoteHardwarePinType_MIN}
 
@@ -750,6 +752,7 @@ extern "C" {
 #define meshtastic_ModuleConfig_StatusMessageConfig_node_status_tag 1
 #define meshtastic_ModuleConfig_NctnlConfig_enabled_tag 1
 #define meshtastic_ModuleConfig_NctnlConfig_quick_menu_enabled_tag 2
+#define meshtastic_ModuleConfig_NctnlConfig_fcu_integration_disabled_tag 3
 #define meshtastic_ModuleConfig_TAKConfig_team_tag 1
 #define meshtastic_ModuleConfig_TAKConfig_role_tag 2
 #define meshtastic_RemoteHardwarePin_gpio_pin_tag 1
@@ -1001,7 +1004,8 @@ X(a, STATIC,   SINGULAR, STRING,   node_status,       1)
 
 #define meshtastic_ModuleConfig_NctnlConfig_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, BOOL,     enabled,           1) \
-X(a, STATIC,   SINGULAR, BOOL,     quick_menu_enabled,   2)
+X(a, STATIC,   SINGULAR, BOOL,     quick_menu_enabled,   2) \
+X(a, STATIC,   SINGULAR, BOOL,     fcu_integration_disabled,   3)
 #define meshtastic_ModuleConfig_NctnlConfig_CALLBACK NULL
 #define meshtastic_ModuleConfig_NctnlConfig_DEFAULT NULL
 
@@ -1070,7 +1074,7 @@ extern const pb_msgdesc_t meshtastic_RemoteHardwarePin_msg;
 #define meshtastic_ModuleConfig_ExternalNotificationConfig_size 42
 #define meshtastic_ModuleConfig_MQTTConfig_size  224
 #define meshtastic_ModuleConfig_MapReportSettings_size 14
-#define meshtastic_ModuleConfig_NctnlConfig_size 4
+#define meshtastic_ModuleConfig_NctnlConfig_size 6
 #define meshtastic_ModuleConfig_NeighborInfoConfig_size 10
 #define meshtastic_ModuleConfig_PaxcounterConfig_size 30
 #define meshtastic_ModuleConfig_RangeTestConfig_size 12

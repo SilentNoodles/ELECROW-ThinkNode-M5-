@@ -70,6 +70,9 @@ class StreamAPI : public PhoneAPI
     void writeStream();
 
   protected:
+#if NCTNL_FCU_MIRROR
+    void writeRawLocked(const uint8_t *buf, size_t len);
+#endif
     /**
      * Send a FromRadio.rebooted = true packet to the phone
      */

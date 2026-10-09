@@ -34,6 +34,11 @@ class SerialConsole : public StreamAPI, public RedirectablePrint, private concur
     void flush();
     void rxInt();
 
+#if NCTNL_FCU_MIRROR
+    // Writes a whole line without splitting a log line or an API frame.
+    void writeMirrorLine(const uint8_t *buf, size_t len);
+#endif
+
   protected:
     /// Check the current underlying physical link to see if the client is currently connected
     virtual bool checkIsConnected() override;

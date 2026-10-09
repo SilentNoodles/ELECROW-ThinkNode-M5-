@@ -11,6 +11,10 @@
 #include <pb_decode.h>
 #include <pb_encode.h>
 
+#if NCTNL_FCU_MIRROR
+#include "modules/NctnlFcuMirror.h"
+#endif
+
 #if ARCH_PORTDUINO
 #include "PortduinoGlue.h"
 #include "meshUtils.h"
@@ -522,6 +526,9 @@ void RadioLibInterface::completeSending()
         if (!isFromUs(p))
             txRelay++;
         printPacket("Completed sending", p);
+#if NCTNL_FCU_MIRROR
+        NctnlFcuMirror::onTxComplete(p);
+#endif
 
         // We are done sending that packet, release it
         packetPool.release(p);
@@ -613,6 +620,9 @@ void RadioLibInterface::handleReceiveInterrupt()
             mp->encrypted.size = payloadLen;
 
             printPacket("Lora RX", mp);
+#if NCTNL_FCU_MIRROR
+            NctnlFcuMirror::onLoraRx(mp);
+#endif
 
 #ifdef LED_LORA
             loraRxPacketObservable.notifyObservers(mp->from);

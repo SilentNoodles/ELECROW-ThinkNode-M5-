@@ -23,6 +23,10 @@
 #include <assert.h>
 #include <string>
 
+#if NCTNL_FCU_MIRROR
+#include "modules/NctnlFcuMirror.h"
+#endif
+
 #if ARCH_PORTDUINO
 #include "PortduinoGlue.h"
 #endif
@@ -193,6 +197,9 @@ void MeshService::handleToRadio(meshtastic_MeshPacket &p)
         p.id = generatePacketId(); // If the phone didn't supply one, then pick one
 
     p.rx_time = getValidTime(RTCQualityFromNet); // Record the time the packet arrived from the phone
+#if NCTNL_FCU_MIRROR
+    NctnlFcuMirror::onFromPhone(p);
+#endif
 
     IF_SCREEN(if (p.decoded.portnum == meshtastic_PortNum_TEXT_MESSAGE_APP && p.decoded.payload.size > 0 &&
                   p.to != NODENUM_BROADCAST && p.to != 0) // DM only
@@ -304,6 +311,9 @@ bool MeshService::trySendPosition(NodeNum dest, bool wantReplies)
 void MeshService::sendToPhone(meshtastic_MeshPacket *p)
 {
     perhapsDecode(p);
+#if NCTNL_FCU_MIRROR
+    NctnlFcuMirror::onToPhone(p);
+#endif
 
 #ifdef ARCH_ESP32
 #if !MESHTASTIC_EXCLUDE_STOREFORWARD

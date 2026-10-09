@@ -26,11 +26,23 @@ Current development flags enable:
 
 `USERPREFS_RINGTONE_NAG_SECS` is set to `1`, so the message notification nag lasts 1 s. It is a default only: it applies on a fresh install or factory reset. A device with a stored external notification config keeps its existing nag timeout.
 
+## FCU serial mirror
+
+`NctnlConfig.fcu_integration_disabled` (field 3) controls the FCU serial mirror on the ThinkNode M5 build (`NCTNL_FCU_MIRROR`). The naming is inverted so an unset value means **on**: the mirror is on by default, including on devices that already have a saved config. There is no on-device toggle yet; it will come with the NCTNL Settings menu. The line format is in `docs/nctnl-fcu-mirror-spec.md`.
+
 ## Settings/status page
 
 The current NCTNL settings/status page is informational and read-only.
 
 It displays effective development settings but does not currently provide a supported user-editable configuration interface.
+
+```text
+NCTNL Settings
+NCTNL:On QMsg:On
+Stat:On Batt:On
+Quiet:Off FCU:On
+DATA:0 COM:1 CTL:2
+```
 
 ## Historical note
 

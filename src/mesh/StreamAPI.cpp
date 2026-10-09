@@ -186,6 +186,14 @@ void StreamAPI::emitTxBuffer(size_t len)
     }
 }
 
+#if NCTNL_FCU_MIRROR
+void StreamAPI::writeRawLocked(const uint8_t *buf, size_t len)
+{
+    concurrency::LockGuard guard(&streamLock);
+    stream->write(buf, len);
+}
+#endif
+
 void StreamAPI::emitRebooted()
 {
     // In case we send a FromRadio packet
