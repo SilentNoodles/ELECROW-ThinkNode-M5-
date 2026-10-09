@@ -164,6 +164,10 @@ void setupNicheGraphics();
 SPIClass SPI1(HSPI);
 #endif
 
+#if NCTNL_FCU_MIRROR
+#include "modules/NctnlFcuMirror.h"
+#endif
+
 using namespace concurrency;
 
 volatile static const char slipstreamTZString[] = {USERPREFS_TZ_STRING};
@@ -722,6 +726,9 @@ void setup()
     // We do this as early as possible because this loads preferences from flash
     // but we need to do this after main cpu init (esp32setup), because we need the random seed set
     nodeDB = new NodeDB;
+#if NCTNL_FCU_MIRROR
+    NctnlFcuMirror::begin();
+#endif
 
     // Initialize transmit history to persist broadcast throttle timers across reboots
     TransmitHistory::getInstance()->loadFromDisk();

@@ -345,6 +345,29 @@ void RedirectablePrint::log(const char *logLevel, const char *format, ...)
     return;
 }
 
+#if NCTNL_FCU_MIRROR
+bool RedirectablePrint::takePrintLock()
+{
+#ifdef HAS_FREE_RTOS
+    return inDebugPrint != nullptr && xSemaphoreTake(inDebugPrint, portMAX_DELAY) == pdTRUE;
+#else
+    if (inDebugPrint)
+        return false;
+    inDebugPrint = true;
+    return true;
+#endif
+}
+
+void RedirectablePrint::givePrintLock()
+{
+#ifdef HAS_FREE_RTOS
+    xSemaphoreGive(inDebugPrint);
+#else
+    inDebugPrint = false;
+#endif
+}
+#endif
+
 void RedirectablePrint::hexDump(const char *logLevel, const unsigned char *buf, uint16_t len)
 {
     const char alphabet[17] = "0123456789abcdef";

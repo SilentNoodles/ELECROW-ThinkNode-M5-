@@ -103,6 +103,17 @@ void SerialConsole::flush()
     Port.flush();
 }
 
+#if NCTNL_FCU_MIRROR
+void SerialConsole::writeMirrorLine(const uint8_t *buf, size_t len)
+{
+    // Same lock order as log() -> emitLogRecord(): print lock, then stream lock.
+    if (!takePrintLock())
+        return;
+    writeRawLocked(buf, len);
+    givePrintLock();
+}
+#endif
+
 // trigger tx of serial data
 void SerialConsole::onNowHasData(uint32_t fromRadioNum)
 {
