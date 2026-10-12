@@ -238,9 +238,9 @@ The page is read-only. The earlier crash when opening it has been fixed (see [Ve
 
 ### FCU Serial Mirror
 
-The ThinkNode M5 build writes machine-readable `@NCTNL1` lines to the USB serial console for every packet received, transmitted, delivered to the phone and sent from the phone, plus a 60 s hello line. An attached FCU can log them without connecting as a Meshtastic API client; the phone stays connected over Bluetooth.
+The ThinkNode M5 and M2 builds write machine-readable `@NCTNL1` lines to the USB serial console for every packet received, transmitted, delivered to the phone and sent from the phone, plus a 60 s hello line and battery lines. An attached FCU can log them without connecting as a Meshtastic API client; the phone stays connected over Bluetooth.
 
-It is controlled by `NctnlConfig.fcu_integration_disabled` and is **on by default** (also on existing devices after updating). The NCTNL Settings page shows `FCU:On`/`FCU:Off`; an on-device toggle will come with the NCTNL Settings menu. See [`docs/nctnl-fcu-mirror-spec.md`](docs/nctnl-fcu-mirror-spec.md).
+It is controlled by `NctnlConfig.fcu_integration_disabled` and is **on by default** (also on existing devices after updating). The M5 NCTNL Settings page shows `FCU:On`/`FCU:Off`; an on-device toggle will come with the NCTNL Settings menu. See [`docs/nctnl-fcu-mirror-spec.md`](docs/nctnl-fcu-mirror-spec.md).
 
 ---
 
