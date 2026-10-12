@@ -186,6 +186,19 @@ void StreamAPI::emitTxBuffer(size_t len)
     }
 }
 
+#if NCTNL_FCU_MIRROR
+bool StreamAPI::writeRawLockedIfRoom(const uint8_t *buf, size_t len)
+{
+    concurrency::LockGuard guard(&streamLock);
+    // Headroom for the UART ring buffer's per-item headers.
+    const int room = stream->availableForWrite();
+    if (room < 0 || (size_t)room < len + NCTNL_FCU_TX_HEADROOM)
+        return false;
+    stream->write(buf, len);
+    return true;
+}
+#endif
+
 void StreamAPI::emitRebooted()
 {
     // In case we send a FromRadio packet

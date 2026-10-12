@@ -49,6 +49,10 @@ class RedirectablePrint : public Print
     std::string mt_sprintf(const std::string fmt_str, ...);
 
   protected:
+#if NCTNL_FCU_MIRROR
+    bool takePrintLock();
+    void givePrintLock();
+#endif
     /// Subclasses can override if they need to change how we format over the serial port
     virtual void log_to_serial(const char *logLevel, const char *format, va_list arg);
     meshtastic_LogRecord_Level getLogLevel(const char *logLevel);

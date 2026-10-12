@@ -870,6 +870,11 @@ message ModuleConfig {
      * Show NCTNL actions in the quick menu.
      */
     bool quick_menu_enabled = 2;
+
+    /*
+     * Disable the FCU serial mirror. Inverted so an unset value leaves the mirror on.
+     */
+    bool fcu_integration_disabled = 3;
   }
 
   /*

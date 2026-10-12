@@ -61,6 +61,9 @@ SerialConsole::SerialConsole() : StreamAPI(&Port), RedirectablePrint(&Port), con
     Port.setTX(SERIAL2_TX);
     Port.setRX(SERIAL2_RX);
 #endif
+#if NCTNL_FCU_MIRROR && defined(ARCH_ESP32) && !defined(IS_USB_SERIAL)
+    Port.setTxBufferSize(NCTNL_FCU_TX_BUFFER_SIZE);
+#endif
     Port.begin(SERIAL_BAUD);
 #if defined(ARCH_NRF52) || defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3) || defined(ARCH_RP2040) ||   \
     defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6)
@@ -102,6 +105,20 @@ void SerialConsole::flush()
 {
     Port.flush();
 }
+
+#if NCTNL_FCU_MIRROR
+SerialConsole::MirrorWrite SerialConsole::writeMirrorLine(const uint8_t *buf, size_t len)
+{
+    // Same lock order as log() -> emitLogRecord(): print lock, then stream lock.
+    if (!takePrintLock())
+        return MirrorWrite::Dropped;
+    MirrorWrite result = MirrorWrite::Suppressed;
+    if (!usingProtobufs)
+        result = writeRawLockedIfRoom(buf, len) ? MirrorWrite::Written : MirrorWrite::Dropped;
+    givePrintLock();
+    return result;
+}
+#endif
 
 // trigger tx of serial data
 void SerialConsole::onNowHasData(uint32_t fromRadioNum)

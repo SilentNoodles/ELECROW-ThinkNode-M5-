@@ -9,6 +9,9 @@
 #include "Throttle.h"
 #include "configuration.h"
 #include "modules/ExternalNotificationModule.h"
+#if NCTNL_FCU_MIRROR
+#include "NctnlFcuMirror.h"
+#endif
 #if !MESHTASTIC_EXCLUDE_STATUS
 #include "StatusMessageModule.h"
 #endif
@@ -452,11 +455,17 @@ void NctnlModule::showSettingsStatusPage() const
         }
     }
 
+#if NCTNL_FCU_MIRROR
+    const bool fcuMirror = NctnlFcuMirror::isActive();
+#else
+    const bool fcuMirror = false;
+#endif
+
     static char status[280];
-    snprintf(status, sizeof(status), "NCTNL Settings\nNCTNL:%s QMsg:%s\nStatus:%s Batt:%s\nDATA:%s COMMS:%s\nCTRL:%s Quiet:%s",
+    snprintf(status, sizeof(status), "NCTNL Settings\nNCTNL:%s QMsg:%s\nStat:%s Batt:%s\nQuiet:%s FCU:%s\nDATA:%s COM:%s CTL:%s",
              isEnabled() ? "On" : "Off", isQuickMenuEnabled() ? "On" : "Off", areAutomaticStatusUpdatesEnabled() ? "On" : "Off",
-             isEnabled() && NctnlDevelopmentConfig::BATTERY_ALERTS_ENABLED ? "On" : "Off", channelTexts[0], channelTexts[1],
-             channelTexts[2], isQuiet() ? "On" : "Off");
+             isEnabled() && NctnlDevelopmentConfig::BATTERY_ALERTS_ENABLED ? "On" : "Off", isQuiet() ? "On" : "Off",
+             fcuMirror ? "On" : "Off", channelTexts[0], channelTexts[1], channelTexts[2]);
 
     static const char *options[] = {"Back"};
     graphics::BannerOverlayOptions banner;
