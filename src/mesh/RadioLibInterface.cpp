@@ -527,7 +527,7 @@ void RadioLibInterface::completeSending()
             txRelay++;
         printPacket("Completed sending", p);
 #if NCTNL_FCU_MIRROR
-        NctnlFcuMirror::onTxComplete(p);
+        NctnlFcuMirror::onTxComplete(p, xmitMsec);
 #endif
 
         // We are done sending that packet, release it

@@ -9,7 +9,7 @@ namespace NctnlFcuMirror
 void begin();
 bool isActive();
 void onLoraRx(const meshtastic_MeshPacket *p);
-void onTxComplete(const meshtastic_MeshPacket *p);
+void onTxComplete(const meshtastic_MeshPacket *p, uint32_t airtimeMs);
 void onToPhone(const meshtastic_MeshPacket *p);
 void onFromPhone(const meshtastic_MeshPacket &p);
 } // namespace NctnlFcuMirror

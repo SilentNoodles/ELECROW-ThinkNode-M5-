@@ -28,6 +28,14 @@ extern MemGet memGet;
 #define SERIAL_BAUD 115200 // Serial debug baud rate
 #endif
 
+#if NCTNL_FCU_MIRROR
+// Console UART TX ring buffer: room for at least two full mirror lines.
+#ifndef NCTNL_FCU_TX_BUFFER_SIZE
+#define NCTNL_FCU_TX_BUFFER_SIZE 2048
+#endif
+#define NCTNL_FCU_TX_HEADROOM 64
+#endif
+
 #define MESHTASTIC_LOG_LEVEL_DEBUG "DEBUG"
 #define MESHTASTIC_LOG_LEVEL_INFO "INFO "
 #define MESHTASTIC_LOG_LEVEL_WARN "WARN "

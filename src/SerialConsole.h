@@ -35,8 +35,10 @@ class SerialConsole : public StreamAPI, public RedirectablePrint, private concur
     void rxInt();
 
 #if NCTNL_FCU_MIRROR
-    // Writes a whole line without splitting a log line or an API frame.
-    void writeMirrorLine(const uint8_t *buf, size_t len);
+    enum class MirrorWrite { Written, Dropped, Suppressed };
+    bool isMirrorSuppressed() const { return usingProtobufs; }
+    // Writes a whole line without splitting a log line or an API frame; drops it rather than block.
+    MirrorWrite writeMirrorLine(const uint8_t *buf, size_t len);
 #endif
 
   protected:
