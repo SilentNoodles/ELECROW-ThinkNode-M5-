@@ -45,7 +45,7 @@ These are transmitted as normal Meshtastic text messages. Each status action als
 
 ## Current structured-event foundation
 
-Machine-readable events are compact JSON sent as `TEXT_MESSAGE_APP` on the `NCTNL_DATA` channel, so all routers relay them. See `docs/nctnl-data-spec.md`. NCTNL_DATA text received by the node is not stored or shown as a message; an assistance request shows an alert banner instead.
+Machine-readable events are compact JSON sent as `TEXT_MESSAGE_APP` on the `NCTNL_DATA` channel, so all routers relay them. See `docs/nctnl-data-spec.md`. NCTNL_DATA text received by the node is not stored or shown as a message; an assistance request shows an alert banner instead. NCTNL_CTRL text is hidden the same way (no alert); both are still relayed and passed to the phone, and the FCU mirror replays them as `D` lines.
 
 ## Not yet implemented as completed functionality
 

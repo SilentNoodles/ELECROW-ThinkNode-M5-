@@ -240,6 +240,8 @@ The page is read-only. The earlier crash when opening it has been fixed (see [Ve
 
 The ThinkNode M5 and M2 builds write machine-readable `@NCTNL1` lines to the USB serial console for every packet received, transmitted, delivered to the phone and sent from the phone, plus a 60 s hello line and battery lines. An attached FCU can log them without connecting as a Meshtastic API client; the phone stays connected over Bluetooth.
 
+Since v1.1 the FCU can also send `@NCTNL1 C` command lines (`sync`, `fcu` keep-alive, `gps`), the node writes local GPS (`G`) lines, and the console returns to text mode after a serial API session, then replays the chat history (`M`) and, on the M5, the last 50 `NCTNL_DATA` / `NCTNL_CTRL` text events (`D`). The screen shows "FCU sync..." during the session.
+
 It is controlled by `NctnlConfig.fcu_integration_disabled` and is **on by default** (also on existing devices after updating). The M5 NCTNL Settings page shows `FCU:On`/`FCU:Off`; an on-device toggle will come with the NCTNL Settings menu. See [`docs/nctnl-fcu-mirror-spec.md`](docs/nctnl-fcu-mirror-spec.md).
 
 ---
@@ -270,6 +272,8 @@ This is an **experimental protocol foundation**, not the final NCTNL wire protoc
 The five current user-facing Quick Message actions use ordinary Meshtastic text messages rather than depending on structured NCTNL packets.
 
 Machine-readable NCTNL_DATA JSON v1 events are sent as `TEXT_MESSAGE_APP` on the `NCTNL_DATA` channel (see [`docs/nctnl-data-spec.md`](docs/nctnl-data-spec.md)). A permanent NCTNL PortNum is not planned for now, because `TEXT_MESSAGE_APP` is relayed by all routers.
+
+On the M5, broadcast text on `NCTNL_CTRL` is now hidden like `NCTNL_DATA`: it is not stored, shown or notified as a chat message, but is still relayed and passed to the phone. Only `NCTNL_DATA` raises the assistance alert.
 
 ---
 

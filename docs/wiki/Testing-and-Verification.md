@@ -45,6 +45,7 @@ Physical testing has confirmed, among other items:
 | S4-03 | NCTNL Quiet (Standby/Offline mute broadcast text; DMs, assistance and battery alerts still sound); Online at start-up and after reboot; manual Mute unchanged (PR #30) | Verified |
 | — | Battery alerts, Emergency → Offline and charging restore on a real discharge | Pending |
 | — | Quick Chat picker hides `NCTNL_DATA` / `NCTNL_CTRL` | Pending |
+| — | FCU mirror v1.1: commands, `G`/`K`/`M`/`D` lines, leaving API mode, sync banner, hidden `NCTNL_CTRL` text | Pending |
 
 The NCTNL Settings crash fix (PR #28) has also been verified on the device.
 
