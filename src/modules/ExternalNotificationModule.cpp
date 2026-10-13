@@ -366,7 +366,11 @@ ExternalNotificationModule::ExternalNotificationModule()
 ProcessMessage ExternalNotificationModule::handleReceived(const meshtastic_MeshPacket &mp)
 {
 #if defined(ELECROW_ThinkNode_M5) && !MESHTASTIC_EXCLUDE_NCTNL
+#if NCTNL_FCU_MIRROR
+    if (nctnlModule && nctnlModule->isHiddenChannelText(mp)) {
+#else
     if (nctnlModule && nctnlModule->isDataChannelText(mp)) {
+#endif
         return ProcessMessage::CONTINUE;
     }
     // NCTNL Quiet skips broadcast notifications only; DMs to us still alert.

@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 
 // Dependency-free line formatter for the FCU serial mirror; see docs/nctnl-fcu-mirror-spec.md.
 namespace NctnlFcuLine
@@ -154,12 +155,15 @@ struct Hello {
     size_t channelCount;
     uint32_t drop;
     bool fcu;
+    const char *longName;
+    const char *shortName;
+    bool gps;
 };
 
 inline size_t formatHelloJson(const Hello &h, char *out, size_t size)
 {
     JsonWriter w(out, size);
-    w.raw("{\"v\":1,\"node\":");
+    w.raw("{\"v\":2,\"node\":");
     w.unsignedNumber(h.node);
     w.raw(",\"hw\":");
     w.string(h.hw);
@@ -181,6 +185,12 @@ inline size_t formatHelloJson(const Hello &h, char *out, size_t size)
     w.unsignedNumber(h.drop);
     w.raw(",\"fcu\":");
     w.raw(h.fcu ? "1" : "0");
+    w.raw(",\"ln\":");
+    w.string(h.longName);
+    w.raw(",\"sn\":");
+    w.string(h.shortName);
+    w.raw(",\"gps\":");
+    w.raw(h.gps ? "1" : "0");
     w.raw("}");
     return w.finish();
 }
@@ -199,5 +209,162 @@ inline size_t formatBatteryJson(int mv, int pct, bool usb, bool chg, char *out, 
     w.raw("}");
     return w.finish();
 }
+
+inline size_t formatSyncResponseJson(bool ok, uint32_t retrySeconds, char *out, size_t size)
+{
+    JsonWriter w(out, size);
+    if (ok) {
+        w.raw("{\"ok\":1}");
+    } else {
+        w.raw("{\"ok\":0,\"why\":\"too_soon\",\"retry_s\":");
+        w.unsignedNumber(retrySeconds);
+        w.raw("}");
+    }
+    return w.finish();
+}
+
+struct GpsState {
+    bool fix;
+    int32_t lat;
+    int32_t lon;
+    int32_t alt;
+    long sats;
+    long hdop;
+    long spd;
+    long trk;
+    uint32_t t;
+    long age;
+};
+
+inline size_t formatGpsJson(const GpsState &g, char *out, size_t size)
+{
+    JsonWriter w(out, size);
+    if (g.fix) {
+        w.raw("{\"fix\":1,\"lat\":");
+        w.number(g.lat);
+        w.raw(",\"lon\":");
+        w.number(g.lon);
+        w.raw(",\"alt\":");
+        w.number(g.alt);
+        w.raw(",\"sats\":");
+        w.number(g.sats);
+        w.raw(",\"hdop\":");
+        w.number(g.hdop);
+        w.raw(",\"spd\":");
+        w.number(g.spd);
+        w.raw(",\"trk\":");
+        w.number(g.trk);
+        w.raw(",\"t\":");
+        w.unsignedNumber(g.t);
+        w.raw(",\"age\":");
+        w.number(g.age);
+    } else {
+        w.raw("{\"fix\":0,\"sats\":");
+        w.number(g.sats);
+        w.raw(",\"age\":");
+        w.number(g.age);
+    }
+    w.raw("}");
+    return w.finish();
+}
+
+struct ChatReplay {
+    uint32_t from;
+    uint32_t to;
+    uint8_t ch;
+    uint32_t t;
+    bool bootRelative;
+    const char *txt;
+};
+
+inline size_t formatChatReplayJson(const ChatReplay &m, char *out, size_t size)
+{
+    JsonWriter w(out, size);
+    w.raw("{\"r\":1,\"from\":");
+    w.unsignedNumber(m.from);
+    w.raw(",\"to\":");
+    w.unsignedNumber(m.to);
+    w.raw(",\"ch\":");
+    w.unsignedNumber(m.ch);
+    w.raw(",\"t\":");
+    w.unsignedNumber(m.t);
+    w.raw(",\"bt\":");
+    w.raw(m.bootRelative ? "1" : "0");
+    w.raw(",\"txt\":");
+    w.string(m.txt);
+    w.raw("}");
+    return w.finish();
+}
+
+struct DataReplay {
+    uint32_t from;
+    uint32_t to;
+    uint8_t ch;
+    uint32_t id;
+    uint32_t t;
+    const char *txt;
+};
+
+inline size_t formatDataReplayJson(const DataReplay &d, char *out, size_t size)
+{
+    JsonWriter w(out, size);
+    w.raw("{\"r\":1,\"from\":");
+    w.unsignedNumber(d.from);
+    w.raw(",\"to\":");
+    w.unsignedNumber(d.to);
+    w.raw(",\"ch\":");
+    w.unsignedNumber(d.ch);
+    w.raw(",\"id\":");
+    w.unsignedNumber(d.id);
+    w.raw(",\"t\":");
+    w.unsignedNumber(d.t);
+    w.raw(",\"txt\":");
+    w.string(d.txt);
+    w.raw("}");
+    return w.finish();
+}
+
+constexpr size_t MAX_COMMAND_LINE = 48;
+constexpr uint8_t FRAME_START = 0x94;
+
+// Collects "@NCTNL1 C <cmd>" lines from bytes the API framing parser discarded.
+class CommandParser
+{
+  public:
+    // Returns the command when a valid line ends, else nullptr. The pointer is valid until the next feed().
+    const char *feed(uint8_t c)
+    {
+        if (c == '\r' || c == '\n') {
+            const char *cmd = nullptr;
+            static const char prefix[] = "@NCTNL1 C ";
+            const size_t prefixLen = sizeof(prefix) - 1;
+            if (!bad && len > prefixLen && strncmp(buf, prefix, prefixLen) == 0) {
+                buf[len] = '\0';
+                cmd = buf + prefixLen;
+                for (const char *p = cmd; *p; p++) {
+                    if (*p == ' ')
+                        cmd = nullptr;
+                }
+            }
+            len = 0;
+            bad = false;
+            return cmd;
+        }
+        if (c == FRAME_START) {
+            // An API frame interrupts the line; text after the frame starts a new one.
+            len = 0;
+            bad = false;
+        } else if (c < 0x20 || c > 0x7E || len >= MAX_COMMAND_LINE)
+            bad = true;
+        else if (!bad)
+            buf[len++] = (char)c;
+        return nullptr;
+    }
+
+  private:
+    char buf[MAX_COMMAND_LINE + 1] = {};
+    size_t len = 0;
+    bool bad = false;
+};
 
 } // namespace NctnlFcuLine

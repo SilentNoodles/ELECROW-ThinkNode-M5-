@@ -28,7 +28,7 @@ Current development flags enable:
 
 ## FCU serial mirror
 
-`NctnlConfig.fcu_integration_disabled` (field 3) controls the FCU serial mirror on the ThinkNode M5 and M2 builds (`NCTNL_FCU_MIRROR`). The naming is inverted so an unset value means **on**: the mirror is on by default, including on devices that already have a saved config. There is no on-device toggle yet; it will come with the NCTNL Settings menu (M5 only; the M2 has no NCTNL Settings page). The line format is in `docs/nctnl-fcu-mirror-spec.md`.
+`NctnlConfig.fcu_integration_disabled` (field 3) controls the FCU serial mirror on the ThinkNode M5 and M2 builds (`NCTNL_FCU_MIRROR`). The naming is inverted so an unset value means **on**: the mirror is on by default, including on devices that already have a saved config. There is no on-device toggle yet; it will come with the NCTNL Settings menu (M5 only; the M2 has no NCTNL Settings page). The line format, the FCU command lines and the sync/replay behaviour (v1.1) are in `docs/nctnl-fcu-mirror-spec.md`. Mirror builds end an idle serial API session after 30 s instead of 15 minutes.
 
 ## Settings/status page
 

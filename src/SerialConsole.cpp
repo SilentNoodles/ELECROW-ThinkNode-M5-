@@ -23,8 +23,14 @@
 #define Port Serial
 #endif
 #endif
+#if NCTNL_FCU_MIRROR
+#include "modules/NctnlFcuMirror.h"
+// Short idle timeout so the console returns to text and the FCU mirror after a serial API session.
+#define SERIAL_CONNECTION_TIMEOUT (30 * 1000UL)
+#else
 // Defaulting to the formerly removed phone_timeout_secs value of 15 minutes
 #define SERIAL_CONNECTION_TIMEOUT (15 * 60) * 1000UL
+#endif
 
 SerialConsole *console;
 
@@ -92,6 +98,13 @@ int32_t SerialConsole::runOnce()
 #endif
 
     int32_t delay = runOncePart();
+#if NCTNL_FCU_MIRROR
+    // Covers sessions that never sent want_config, where checkConnectionTimeout() does nothing.
+    if (usingProtobufs && !Throttle::isWithinTimespanMs(lastContactMsec, SERIAL_CONNECTION_TIMEOUT))
+        close();
+    if (usingProtobufs)
+        return delay;
+#endif
 #if defined(SERIAL_HAS_ON_RECEIVE) || defined(CONFIG_IDF_TARGET_ESP32S2)
     return Port.available() ? delay : INT32_MAX;
 #elif defined(IS_USB_SERIAL)
@@ -107,16 +120,35 @@ void SerialConsole::flush()
 }
 
 #if NCTNL_FCU_MIRROR
-SerialConsole::MirrorWrite SerialConsole::writeMirrorLine(const uint8_t *buf, size_t len)
+SerialConsole::MirrorWrite SerialConsole::writeMirrorLine(const uint8_t *buf, size_t len, size_t reserve)
 {
     // Same lock order as log() -> emitLogRecord(): print lock, then stream lock.
     if (!takePrintLock())
         return MirrorWrite::Dropped;
     MirrorWrite result = MirrorWrite::Suppressed;
     if (!usingProtobufs)
-        result = writeRawLockedIfRoom(buf, len) ? MirrorWrite::Written : MirrorWrite::Dropped;
+        result = writeRawLockedIfRoom(buf, len, reserve) ? MirrorWrite::Written : MirrorWrite::Dropped;
     givePrintLock();
     return result;
+}
+
+void SerialConsole::close()
+{
+    StreamAPI::close();
+    if (!usingProtobufs)
+        return;
+    const bool idle = !Throttle::isWithinTimespanMs(lastContactMsec, SERIAL_CONNECTION_TIMEOUT);
+    usingProtobufs = false;
+    canWrite = false;
+    LOG_INFO("Serial API session ended (%s), console back to text", idle ? "idle" : "disconnect");
+    NctnlFcuMirror::onApiSessionEnd(!idle);
+}
+
+void SerialConsole::onUnframedByte(uint8_t c)
+{
+    const char *cmd = commandParser.feed(c);
+    if (cmd && !usingProtobufs)
+        NctnlFcuMirror::onCommand(cmd);
 }
 #endif
 
@@ -149,6 +181,9 @@ bool SerialConsole::handleToRadio(const uint8_t *buf, size_t len)
         // Switch to protobufs for log messages
         usingProtobufs = true;
         canWrite = true;
+#if NCTNL_FCU_MIRROR
+        NctnlFcuMirror::onApiFrame();
+#endif
 
         return StreamAPI::handleToRadio(buf, len);
     } else {

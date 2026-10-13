@@ -25,6 +25,7 @@
 
 #if NCTNL_FCU_MIRROR
 #include "modules/NctnlFcuMirror.h"
+#include "modules/NctnlTextStore.h"
 #endif
 
 #if ARCH_PORTDUINO
@@ -255,6 +256,9 @@ void MeshService::sendToMesh(meshtastic_MeshPacket *p, RxSource src, bool ccToPh
 {
     uint32_t mesh_packet_id = p->id;
     nodeDB->updateFrom(*p); // update our local DB for this packet (because phone might have sent position packets etc...)
+#if NCTNL_TEXT_STORE
+    NctnlTextStore::onSent(*p);
+#endif
 
     // Note: We might return !OK if our fifo was full, at that point the only option we have is to drop it
     ErrorCode res = router->sendLocal(p, src);

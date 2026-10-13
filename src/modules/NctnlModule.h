@@ -21,6 +21,12 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     bool sendBatteryDataEvent(const char *type);
     bool isDataChannelText(const meshtastic_MeshPacket &mp) const;
     bool handleDataText(const meshtastic_MeshPacket &mp);
+#if NCTNL_FCU_MIRROR
+    bool isCtrlChannelText(const meshtastic_MeshPacket &mp) const;
+    // NCTNL_DATA or NCTNL_CTRL broadcast text: never stored, shown or notified as a chat message.
+    bool isHiddenChannelText(const meshtastic_MeshPacket &mp) const { return isDataChannelText(mp) || isCtrlChannelText(mp); }
+    bool isAlertBannerActive() const;
+#endif
 #if defined(ELECROW_ThinkNode_M5) && HAS_SCREEN
     void showSettingsStatusPage() const;
 #endif
@@ -31,6 +37,7 @@ class NctnlModule : public SinglePortModule, private concurrency::OSThread
     int32_t runOnce() override;
 
   private:
+    bool isBroadcastTextOnChannel(const meshtastic_MeshPacket &mp, const char *channelName) const;
     bool sendDataEvent(bool batteryEvent, const char *type);
     void checkBattery();
     void fireBatteryAlert(int level, uint8_t percent);

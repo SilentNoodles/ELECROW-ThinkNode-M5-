@@ -1020,6 +1020,16 @@ void GPS::up()
     setPowerState(GPS_ACTIVE);
 }
 
+#if NCTNL_FCU_MIRROR
+void GPS::requestFix()
+{
+    if (!GPSInitFinished || config.position.fixed_position || powerState == GPS_ACTIVE)
+        return;
+    up();
+    setIntervalFromNow(0);
+}
+#endif
+
 // We've finished a GPS search cycle (lock or timeout). Enter a low power state, potentially.
 void GPS::down()
 {
@@ -1030,6 +1040,9 @@ void GPS::down()
     uint32_t predictedSearchDuration = scheduling.predictedSearchDurationMs();
     uint32_t sleepTime = scheduling.msUntilNextSearch();
     uint32_t updateInterval = Default::getConfiguredOrDefaultMs(config.position.gps_update_interval);
+#if NCTNL_FCU_MIRROR
+    updateInterval = GPSUpdateScheduling::applyIntervalCap(updateInterval);
+#endif
 
     LOG_DEBUG("%us until next search", sleepTime / 1000);
 
@@ -1144,6 +1157,9 @@ int32_t GPS::runOnce()
     if (powerState == GPS_ACTIVE) {
         // if gps_update_interval is <=10s, GPS never goes off, so we treat that differently
         uint32_t updateInterval = Default::getConfiguredOrDefaultMs(config.position.gps_update_interval);
+#if NCTNL_FCU_MIRROR
+        updateInterval = GPSUpdateScheduling::applyIntervalCap(updateInterval);
+#endif
 
         // 1. Got a time for the first time this cycle
         if (!gotTime && lookForTime()) { // Note: we count on this && short-circuiting and not resetting the RTC time
