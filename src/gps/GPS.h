@@ -128,6 +128,12 @@ class GPS : private concurrency::OSThread
     // Let the GPS hardware save power between updates
     void down();
 
+#if NCTNL_FCU_MIRROR
+    bool hasFix() const { return hasValidLocation; }
+    // Start a search now if the GPS is sleeping; no config change.
+    void requestFix();
+#endif
+
   private:
     GPS() : concurrency::OSThread("GPS") {}
 

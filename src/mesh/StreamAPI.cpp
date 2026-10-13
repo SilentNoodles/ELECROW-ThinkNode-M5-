@@ -77,11 +77,18 @@ int32_t StreamAPI::handleRecStream(const char *buf, uint16_t bufLen)
         // console->printf("rxPtr %d ptr=%d c=0x%x\n", rxPtr, ptr, c);
 
         if (ptr == 0) { // looking for START1
+#if NCTNL_FCU_MIRROR
+            onUnframedByte(c);
+#endif
             if (c != START1)
                 rxPtr = 0;     // failed to find framing
         } else if (ptr == 1) { // looking for START2
             if (c != START2)
                 rxPtr = 0;                             // failed to find framing
+#if NCTNL_FCU_MIRROR
+            if (c != START2)
+                onUnframedByte(c);
+#endif
         } else if (ptr >= HEADER_LEN - 1) {            // we have at least read our 4 byte framing
             uint32_t len = (rxBuf[2] << 8) + rxBuf[3]; // big endian 16 bit length follows framing
 
@@ -133,11 +140,18 @@ int32_t StreamAPI::readStream()
             // console->printf("rxPtr %d ptr=%d c=0x%x\n", rxPtr, ptr, c);
 
             if (ptr == 0) { // looking for START1
+#if NCTNL_FCU_MIRROR
+                onUnframedByte(c);
+#endif
                 if (c != START1)
                     rxPtr = 0;     // failed to find framing
             } else if (ptr == 1) { // looking for START2
                 if (c != START2)
                     rxPtr = 0;                             // failed to find framing
+#if NCTNL_FCU_MIRROR
+                if (c != START2)
+                    onUnframedByte(c);
+#endif
             } else if (ptr >= HEADER_LEN - 1) {            // we have at least read our 4 byte framing
                 uint32_t len = (rxBuf[2] << 8) + rxBuf[3]; // big endian 16 bit length follows framing
 
@@ -187,12 +201,12 @@ void StreamAPI::emitTxBuffer(size_t len)
 }
 
 #if NCTNL_FCU_MIRROR
-bool StreamAPI::writeRawLockedIfRoom(const uint8_t *buf, size_t len)
+bool StreamAPI::writeRawLockedIfRoom(const uint8_t *buf, size_t len, size_t reserve)
 {
     concurrency::LockGuard guard(&streamLock);
     // Headroom for the UART ring buffer's per-item headers.
     const int room = stream->availableForWrite();
-    if (room < 0 || (size_t)room < len + NCTNL_FCU_TX_HEADROOM)
+    if (room < 0 || (size_t)room < len + NCTNL_FCU_TX_HEADROOM + reserve)
         return false;
     stream->write(buf, len);
     return true;

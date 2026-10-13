@@ -2,6 +2,9 @@
 
 #include "RedirectablePrint.h"
 #include "StreamAPI.h"
+#if NCTNL_FCU_MIRROR
+#include "modules/NctnlFcuLine.h"
+#endif
 /**
  * Provides both debug printing and, if the client starts sending protobufs to us, switches to send/receive protobufs
  * (and starts dropping debug printing - FIXME, eventually those prints should be encapsulated in protobufs).
@@ -38,7 +41,10 @@ class SerialConsole : public StreamAPI, public RedirectablePrint, private concur
     enum class MirrorWrite { Written, Dropped, Suppressed };
     bool isMirrorSuppressed() const { return usingProtobufs; }
     // Writes a whole line without splitting a log line or an API frame; drops it rather than block.
-    MirrorWrite writeMirrorLine(const uint8_t *buf, size_t len);
+    // reserve: extra free TX space required, so paced writers leave room for live lines.
+    MirrorWrite writeMirrorLine(const uint8_t *buf, size_t len, size_t reserve = 0);
+    // Also leaves protobuf mode, so text logs and the mirror resume.
+    void close() override;
 #endif
 
   protected:
@@ -49,6 +55,13 @@ class SerialConsole : public StreamAPI, public RedirectablePrint, private concur
 
     /// Possibly switch to protobufs if we see a valid protobuf message
     virtual void log_to_serial(const char *logLevel, const char *format, va_list arg);
+
+#if NCTNL_FCU_MIRROR
+    void onUnframedByte(uint8_t c) override;
+
+  private:
+    NctnlFcuLine::CommandParser commandParser;
+#endif
 };
 
 // A simple wrapper to allow non class aware code write to the console

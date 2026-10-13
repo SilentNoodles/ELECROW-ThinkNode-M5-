@@ -71,7 +71,9 @@ class StreamAPI : public PhoneAPI
 
   protected:
 #if NCTNL_FCU_MIRROR
-    bool writeRawLockedIfRoom(const uint8_t *buf, size_t len);
+    bool writeRawLockedIfRoom(const uint8_t *buf, size_t len, size_t reserve = 0);
+    // Every byte seen while hunting for 0x94 0xC3 framing, including the 0x94 that starts a frame.
+    virtual void onUnframedByte(uint8_t c) {}
 #endif
     /**
      * Send a FromRadio.rebooted = true packet to the phone

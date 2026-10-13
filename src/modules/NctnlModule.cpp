@@ -11,6 +11,7 @@
 #include "modules/ExternalNotificationModule.h"
 #if NCTNL_FCU_MIRROR
 #include "NctnlFcuMirror.h"
+#include "NctnlTextStore.h"
 #endif
 #if !MESHTASTIC_EXCLUDE_STATUS
 #include "StatusMessageModule.h"
@@ -586,19 +587,51 @@ bool NctnlModule::sendDataEvent(bool batteryEvent, const char *type)
     return true;
 }
 
-bool NctnlModule::isDataChannelText(const meshtastic_MeshPacket &mp) const
+bool NctnlModule::isBroadcastTextOnChannel(const meshtastic_MeshPacket &mp, const char *channelName) const
 {
     if (!isEnabled() || mp.which_payload_variant != meshtastic_MeshPacket_decoded_tag ||
         mp.decoded.portnum != meshtastic_PortNum_TEXT_MESSAGE_APP || !isBroadcast(mp.to)) {
         return false;
     }
-    const int channel = findChannelByName(NctnlDevelopmentConfig::DATA_CHANNEL_NAME);
+    const int channel = findChannelByName(channelName);
     return channel >= 0 && mp.channel == channel;
 }
 
-// Returns true when the text belongs to NCTNL_DATA and must not be stored, shown or notified as a message.
+bool NctnlModule::isDataChannelText(const meshtastic_MeshPacket &mp) const
+{
+    return isBroadcastTextOnChannel(mp, NctnlDevelopmentConfig::DATA_CHANNEL_NAME);
+}
+
+#if NCTNL_FCU_MIRROR
+bool NctnlModule::isCtrlChannelText(const meshtastic_MeshPacket &mp) const
+{
+    return isBroadcastTextOnChannel(mp, NctnlDevelopmentConfig::CTRL_CHANNEL_NAME);
+}
+
+bool NctnlModule::isAlertBannerActive() const
+{
+#if HAS_SCREEN
+    return repeatingAlertTone != nullptr && screen && screen->isOverlayBannerShowing();
+#else
+    return false;
+#endif
+}
+#endif
+
+// Returns true when the text belongs to NCTNL_DATA (or NCTNL_CTRL in mirror builds) and must not be stored, shown or notified.
 bool NctnlModule::handleDataText(const meshtastic_MeshPacket &mp)
 {
+#if NCTNL_TEXT_STORE
+    if (isHiddenChannelText(mp) && !isFromUs(&mp)) {
+        NctnlTextStore::record(mp, mp.from, mp.rx_time);
+    }
+#endif
+#if NCTNL_FCU_MIRROR
+    if (isCtrlChannelText(mp)) {
+        LOG_DEBUG("NCTNL_CTRL text from=0x%08x id=0x%08x suppressed", mp.from, mp.id);
+        return true;
+    }
+#endif
     if (!isDataChannelText(mp)) {
         return false;
     }

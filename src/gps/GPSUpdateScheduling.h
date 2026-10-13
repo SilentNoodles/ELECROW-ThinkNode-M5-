@@ -19,6 +19,15 @@ class GPSUpdateScheduling
     uint32_t elapsedSearchMs();   // How long have we been searching so far?
     uint32_t predictedSearchDurationMs(); // How long do we expect to spend searching for a lock?
 
+#if NCTNL_FCU_MIRROR
+    // RAM-only cap on the update interval while an FCU is attached; 0 = none. config.position is untouched.
+    static uint32_t intervalCapMs;
+    static uint32_t applyIntervalCap(uint32_t intervalMs)
+    {
+        return (intervalCapMs && intervalMs > intervalCapMs) ? intervalCapMs : intervalMs;
+    }
+#endif
+
   private:
     void updateLockTimePrediction(); // Called from informGotLock
     uint32_t searchStartedMs = 0;

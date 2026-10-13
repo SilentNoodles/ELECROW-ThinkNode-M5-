@@ -8,6 +8,9 @@
 #include "gps/RTC.h"
 #include "graphics/draw/MessageRenderer.h"
 #include <cstring> // memcpy
+#if NCTNL_FCU_MIRROR
+#include "modules/NctnlTextStore.h"
+#endif
 
 #ifndef MESSAGE_TEXT_POOL_SIZE
 #define MESSAGE_TEXT_POOL_SIZE (MAX_MESSAGES_SAVED * MAX_MESSAGE_SIZE)
@@ -155,6 +158,9 @@ static inline void autosaveTick(MessageStore *store)
         LOG_INFO("Autosaving MessageStore to flash");
         store->saveToFlash();
     } else {
+#if NCTNL_TEXT_STORE
+        NctnlTextStore::save();
+#endif
         LOG_INFO("Autosave skipped, no changes to save");
         g_lastAutoSaveMs = now;
     }
@@ -307,6 +313,9 @@ void MessageStore::saveToFlash()
 
     f.close();
 #endif
+#if NCTNL_TEXT_STORE
+    NctnlTextStore::save();
+#endif
 
     // Reset autosave state after any save
     g_messageStoreHasUnsavedChanges = false;
@@ -317,6 +326,9 @@ void MessageStore::loadFromFlash()
 {
     std::deque<StoredMessage>().swap(liveMessages);
     resetMessagePool(); // reset pool when loading
+#if NCTNL_TEXT_STORE
+    NctnlTextStore::load();
+#endif
 
 #ifdef FSCom
     concurrency::LockGuard guard(spiLock);

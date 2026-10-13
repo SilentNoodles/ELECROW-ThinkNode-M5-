@@ -2,6 +2,10 @@
 
 #include "Default.h"
 
+#if NCTNL_FCU_MIRROR
+uint32_t GPSUpdateScheduling::intervalCapMs = 0;
+#endif
+
 // Mark the time when searching for GPS position begins
 void GPSUpdateScheduling::informSearching()
 {
@@ -49,6 +53,9 @@ uint32_t GPSUpdateScheduling::msUntilNextSearch()
 
     // Target interval (seconds), between GPS updates
     uint32_t updateInterval = Default::getConfiguredOrDefaultMs(config.position.gps_update_interval, default_gps_update_interval);
+#if NCTNL_FCU_MIRROR
+    updateInterval = applyIntervalCap(updateInterval);
+#endif
 
     // After a failed search, back off: indoors / no-sky environments will keep failing,
     // so wake at most once per broadcast interval rather than once per gps_update_interval.
